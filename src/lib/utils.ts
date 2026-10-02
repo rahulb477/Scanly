@@ -23,14 +23,24 @@ export function sanitizeText(input: string | null | undefined, max = 5000) {
     .slice(0, max);
 }
 
-export function publicBusinessUrl(slug: string) {
-  const base = (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (typeof process.env.VERCEL_URL === "string"
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000")
-  ).replace(/\/$/, "");
-  return `${base}/b/${slug}`;
+export function publicBusinessUrl(slug: string, requestOrigin?: string) {
+  if (!/^[a-z0-9_-]{1,120}$/.test(slug)) throw new Error("Invalid business slug.");
+  const candidate = process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ||
+    requestOrigin || (typeof window !== "undefined" ? window.location.origin : undefined) ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+  if (!candidate) throw new Error("Application URL missing. Set NEXT_PUBLIC_APP_URL to your actual production origin.");
+  const url = new URL(candidate);
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+    throw new Error("NEXT_PUBLIC_APP_URL must be an HTTP(S) origin without a path, credentials, query or fragment.");
+  }
+  // A production-mode emulator build is still isolated local testing, not a live
+  // Firebase project. Never relax HTTPS for a real project or a non-loopback host.
+  const localEmulator = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true" &&
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.startsWith("demo-") === true &&
+    ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (process.env.NODE_ENV === "production" && url.protocol !== "https:" && !localEmulator) throw new Error("Production QR codes require an HTTPS application URL.");
+  return `${url.origin}/b/${slug}`;
 }
 
 export function buildWifiQrString(name: string, password: string, security: string) {

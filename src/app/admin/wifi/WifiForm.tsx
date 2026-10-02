@@ -1,17 +1,21 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { authErrorMessage } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Business } from "@/db/schema";
+import type { Business } from "@/lib/data/types";
 import { Card, CardHeader, Field, Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Save, Eye as EyeVisible, EyeOff } from "lucide-react";
 
 export function WifiForm({ business }: { business: Business }) {
   const router = useRouter();
   const [data, setData] = useState({
     wifiEnabled: business.wifiEnabled,
+    wifiPublicSharingEnabled: business.wifiPublicSharingEnabled,
     wifiName: business.wifiName || "",
     wifiPassword: business.wifiPassword || "",
     wifiSecurity: (business.wifiSecurity || "WPA") as "WPA" | "WEP" | "Open",
@@ -26,7 +30,7 @@ export function WifiForm({ business }: { business: Business }) {
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${business.id}`, {
+      const res = await authenticatedFetch(`/api/businesses/${business.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(data),
@@ -37,6 +41,8 @@ export function WifiForm({ business }: { business: Business }) {
         toast.success("Wi-Fi settings saved");
         router.refresh();
       }
+    } catch (error) {
+      toast.error(authErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -44,7 +50,6 @@ export function WifiForm({ business }: { business: Business }) {
 
   return (
     <div className="space-y-6">
-      <Toaster />
       <div>
         <h1 className="text-2xl font-extrabold text-slate-950">Wi-Fi Sharing</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -63,6 +68,10 @@ export function WifiForm({ business }: { business: Business }) {
               className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
             />
             <span className="text-sm font-medium text-slate-800">Show Wi-Fi on customer page</span>
+          </label>
+          <label className="flex items-start gap-3 text-sm text-slate-700">
+            <input type="checkbox" checked={data.wifiPublicSharingEnabled} onChange={(e) => set("wifiPublicSharingEnabled", e.target.checked)} className="mt-1" />
+            I authorize sharing these guest Wi-Fi credentials publicly. Anyone with this page URL can access them. Never use your private business network here.
           </label>
           <div className="grid gap-4 md:grid-cols-3">
             <Field label="Network name (SSID)">
@@ -90,7 +99,7 @@ export function WifiForm({ business }: { business: Business }) {
               <select
                 className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
                 value={data.wifiSecurity}
-                onChange={(e) => set("wifiSecurity", e.target.value as any)}
+                onChange={(e) => set("wifiSecurity", e.target.value as "WPA" | "WEP" | "Open")}
               >
                 <option value="WPA">WPA / WPA2</option>
                 <option value="WEP">WEP</option>

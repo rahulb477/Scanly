@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/db";
-import { businesses, analyticsEvents, reviewSessions } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { getBusiness, businessRef } from "@/lib/data/repository";
+import { apiErrorResponse, ApiError, identifier } from "@/lib/api";
+import { FieldValue } from "firebase-admin/firestore";
+import { trackEvent } from "@/lib/analytics";
 import {
   generateReview as makeReview,
   shortenReview,
@@ -14,10 +14,10 @@ import { rateLimit } from "@/lib/ratelimit";
 import { sanitizeText } from "@/lib/utils";
 
 const schemaInput = z.object({
-  businessId: z.string().min(1).max(64),
-  overallExperience: z.string().max(64).optional(),
-  staffExperience: z.string().max(64).optional(),
-  serviceExperience: z.string().max(64).optional(),
+  businessId: identifier,
+  overallExperience: z.enum(["Very Poor", "Poor", "Okay", "Good", "Amazing"]).nullable().optional(),
+  staffExperience: z.enum(["Very Poor", "Poor", "Okay", "Good", "Excellent"]).nullable().optional(),
+  serviceExperience: z.enum(["Slow", "Average", "Good", "Excellent"]).nullable().optional(),
   selectedItems: z.array(z.string().max(100)).max(50).optional(),
   positiveFactors: z.array(z.string().max(64)).max(50).optional(),
   customComment: z.string().max(1000).optional(),
@@ -25,9 +25,9 @@ const schemaInput = z.object({
   tone: z.enum(["Natural", "Friendly", "Short", "Detailed"]),
 });
 
-export async function POST(req: NextRequest) {
+async function postReview(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || "local";
-  if (!rateLimit(`ai:${ip}`, 30, 60_000)) {
+  if (!await rateLimit(`ai:${ip}`, 30, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
   const body = await req.json().catch(() => ({}));
@@ -35,15 +35,11 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
-  const [biz] = await db
-    .select()
-    .from(businesses)
-    .where(eq(businesses.id, parsed.data.businessId))
-    .limit(1);
-  if (!biz) {
+  const biz = await getBusiness(parsed.data.businessId);
+  if (!biz || !biz.isPublished || biz.deleting) {
     return NextResponse.json({ error: "Business not found" }, { status: 404 });
   }
-  if (!biz.aiReviewEnabled) {
+  if (!biz.reviewEnabled || !biz.aiReviewEnabled) {
     return NextResponse.json({ error: "AI review disabled" }, { status: 403 });
   }
 
@@ -59,40 +55,34 @@ export async function POST(req: NextRequest) {
     tone: parsed.data.tone,
   });
 
-  // Persist a session record
-  await db.insert(reviewSessions).values({
-    id: nanoid(),
-    businessId: biz.id,
+  const session = businessRef(biz.id).collection("reviewSessions").doc();
+  await session.set({
+    id: session.id, businessId: biz.id,
     overallExperience: parsed.data.overallExperience || null,
     staffExperience: parsed.data.staffExperience || null,
     serviceExperience: parsed.data.serviceExperience || null,
     selectedItems: parsed.data.selectedItems || [],
     positiveFactors: parsed.data.positiveFactors || [],
-    customComment: parsed.data.customComment || null,
-    language: parsed.data.language,
-    tone: parsed.data.tone,
-    generatedReview: review,
+    customComment: sanitizeText(parsed.data.customComment || "", 800),
+    language: parsed.data.language, tone: parsed.data.tone, generatedReview: review,
+    createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+    expiresAt: new Date(Date.now() + 30 * 86400_000),
   });
-
-  await db.insert(analyticsEvents).values({
-    id: nanoid(),
-    businessId: biz.id,
-    type: "review_generated",
-  });
+  await trackEvent(biz.id, "review_generated");
 
   return NextResponse.json({ review });
 }
 
 const patchInput = z.object({
-  businessId: z.string().min(1).max(64),
+  businessId: identifier,
   action: z.enum(["regenerate", "shorten", "natural", "translate", "copy"]),
   review: z.string().max(2000),
   language: z.enum(["English", "Hinglish", "Hindi"]).optional(),
 });
 
-export async function PATCH(req: NextRequest) {
+async function patchReview(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || "local";
-  if (!rateLimit(`ai:${ip}`, 60, 60_000)) {
+  if (!await rateLimit(`ai:${ip}`, 60, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
   const body = await req.json().catch(() => ({}));
@@ -100,14 +90,12 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
-  const [biz] = await db
-    .select()
-    .from(businesses)
-    .where(eq(businesses.id, parsed.data.businessId))
-    .limit(1);
-  if (!biz) {
+  const biz = await getBusiness(parsed.data.businessId);
+  if (!biz || !biz.isPublished || biz.deleting) {
     return NextResponse.json({ error: "Business not found" }, { status: 404 });
   }
+
+  if (!biz.reviewEnabled || !biz.aiReviewEnabled) throw new ApiError(403, "review/disabled", "Review assistant is disabled.");
 
   const lang = parsed.data.language || "English";
   let review = parsed.data.review;
@@ -132,14 +120,16 @@ export async function PATCH(req: NextRequest) {
     }
     case "copy": {
       // No transformation, just track
-      await db.insert(analyticsEvents).values({
-        id: nanoid(),
-        businessId: biz.id,
-        type: "review_copied",
-      });
+      await trackEvent(biz.id, "review_copied");
       return NextResponse.json({ review });
     }
   }
 
   return NextResponse.json({ review });
+}
+export async function POST(req: NextRequest) {
+  try { return await postReview(req); } catch (error) { return apiErrorResponse(error); }
+}
+export async function PATCH(req: NextRequest) {
+  try { return await patchReview(req); } catch (error) { return apiErrorResponse(error); }
 }

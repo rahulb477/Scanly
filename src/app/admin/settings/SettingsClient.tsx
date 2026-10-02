@@ -1,37 +1,41 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { authErrorMessage } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Business } from "@/db/schema";
+import type { Business } from "@/lib/data/types";
 import { Card, CardHeader } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Trash2, Copy, ExternalLink } from "lucide-react";
-import { publicBusinessUrl } from "@/lib/utils";
 
-export function SettingsClient({ business }: { business: Business }) {
+
+export function SettingsClient({ business, publicUrl }: { business: Business; publicUrl: string }) {
   const router = useRouter();
-  const url = publicBusinessUrl(business.slug);
+  const url = publicUrl;
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function copy() {
-    await navigator.clipboard.writeText(url);
-    toast.success("Link copied");
+    try { await navigator.clipboard.writeText(url); toast.success("Link copied"); } catch { toast.error("Could not copy. Copy the displayed URL manually."); }
   }
 
   async function destroy() {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/businesses/${business.id}`, { method: "DELETE" });
+      const res = await authenticatedFetch(`/api/businesses/${business.id}`, { method: "DELETE" });
       if (!res.ok) {
         toast.error("Could not delete");
         setConfirming(false);
       } else {
         toast.success("Business deleted");
-        router.push("/admin");
+        router.push("/dashboard");
         router.refresh();
       }
+    } catch (error) {
+      toast.error(authErrorMessage(error));
     } finally {
       setDeleting(false);
     }
@@ -39,7 +43,6 @@ export function SettingsClient({ business }: { business: Business }) {
 
   return (
     <div className="space-y-6">
-      <Toaster />
       <div>
         <h1 className="text-2xl font-extrabold">Settings</h1>
         <p className="mt-1 text-sm text-slate-500">Manage your business URL and dangerous actions.</p>

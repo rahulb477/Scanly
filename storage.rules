@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function business(id) { return firestore.get(/databases/(default)/documents/businesses/$(id)).data; }
+    function member(id) {
+      return request.auth != null && (business(id).ownerId == request.auth.uid ||
+        (firestore.exists(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)) &&
+         firestore.get(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)).data.uid == request.auth.uid &&
+         firestore.get(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)).data.businessId == id &&
+         firestore.get(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)).data.role in ['admin', 'staff']));
+    }
+    function manager(id) {
+      return request.auth != null && (business(id).ownerId == request.auth.uid ||
+        (member(id) && firestore.get(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)).data.role == 'admin'));
+    }
+    function active(id) { return !('deleting' in business(id)) || business(id).deleting == false; }
+    function image() {
+      return request.resource != null && request.resource.size > 0 && request.resource.size <= 5 * 1024 * 1024 &&
+        request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
+    }
+    match /businesses/{id}/{kind}/{fileName} {
+      // These folders contain intentionally public branding/menu images only.
+      allow read: if kind in ['logos', 'covers', 'menu'] && (member(id) || (business(id).isPublished == true && active(id)));
+      allow create, update: if kind in ['logos', 'covers', 'menu'] && active(id) &&
+        ((kind == 'menu' && member(id)) || (kind in ['logos', 'covers'] && manager(id))) &&
+        fileName.matches('^[A-Za-z0-9_-]+\\.(jpg|png|webp)$') && image();
+      allow delete: if active(id) && ((kind == 'menu' && member(id)) || (kind in ['logos', 'covers'] && manager(id)));
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

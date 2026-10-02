@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import QRCode from "qrcode";
+import { businessFontStack } from "@/lib/typography";
+import { requestJson } from "@/lib/http-client";
+import { authErrorMessage } from "@/lib/firebase/errors";
 import {
   Star,
   ChevronRight,
@@ -23,10 +27,10 @@ import {
   Menu as MenuIcon,
   ArrowLeft,
 } from "lucide-react";
-import type { Business, MenuCategory, MenuItem } from "@/db/schema";
+import type { PublicBusiness as Business, MenuCategory, MenuItem } from "@/lib/data/types";
 import type { ThemePreset } from "@/lib/themes";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
 import { buildWifiQrString } from "@/lib/utils";
 
@@ -39,13 +43,14 @@ type Props = {
 
 function safeUrl(u: string | null | undefined) {
   if (!u) return null;
-  if (u.startsWith("http")) return u;
-  return `https://${u}`;
+  try { const url = new URL(u); return url.protocol === "https:" || url.protocol === "http:" ? url.href : null; } catch { return null; }
 }
 
 export function BusinessLanding({ business, categories, items, theme }: Props) {
   const [view, setView] = useState<"home" | "menu" | "review" | "wifi">("home");
   const [showShare, setShowShare] = useState(false);
+  const scanTracked = React.useRef(false);
+  React.useEffect(() => { if (!scanTracked.current) { scanTracked.current = true; void track(business.id, "qr_scan"); } }, [business.id]);
 
   const primary = business.primaryColor || theme.primary;
   const secondary = business.secondaryColor || theme.secondary;
@@ -72,14 +77,16 @@ export function BusinessLanding({ business, categories, items, theme }: Props) {
 
   return (
     <div
-      className="min-h-screen"
+      className="scanly-public min-h-screen"
+      data-card-style={business.cardStyle}
+      data-button-style={business.buttonStyle}
       style={{
         background,
         color: text,
-        fontFamily: "Inter, system-ui, sans-serif",
-      }}
+        fontFamily: businessFontStack(business.font),
+        "--customer-primary": primary,
+      } as React.CSSProperties}
     >
-      <Toaster />
 
       {/* Top hero */}
       <header
@@ -187,7 +194,7 @@ function HomeView({
 }) {
   const phone = business.phone;
   const email = business.email;
-  const hasGoogle = !!business.googleReviewUrl;
+  const hasGoogle = business.reviewEnabled && !!business.googleReviewUrl;
 
   return (
     <>
@@ -228,7 +235,7 @@ function HomeView({
             </a>
           ) : null}
 
-          {business.aiReviewEnabled ? (
+          {business.reviewEnabled && business.aiReviewEnabled ? (
             <button
               onClick={onOpenReview}
               className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-white"
@@ -554,9 +561,8 @@ function ReviewView({ business, onBack }: { business: Business; onBack: () => vo
   const [availableItems, setAvailableItems] = useState<string[]>([]);
   React.useEffect(() => {
     if (!business.menuEnabled) return;
-    fetch(`/api/menu/public?businessId=${business.id}`)
-      .then((r) => r.json())
-      .then((j) => setAvailableItems((j.items || []).map((it: any) => it.name)))
+    requestJson<{ items: { name: string }[] }>(`/api/menu/public?businessId=${business.id}`)
+      .then((j) => setAvailableItems((j.items || []).map((it: { name: string }) => it.name)))
       .catch(() => {});
   }, [business.id, business.menuEnabled]);
 
@@ -585,7 +591,7 @@ function ReviewView({ business, onBack }: { business: Business; onBack: () => vo
   async function generate() {
     setGenerating(true);
     try {
-      const res = await fetch("/api/ai/review", {
+      const json = await requestJson<{ review: string }>("/api/ai/review", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -600,24 +606,24 @@ function ReviewView({ business, onBack }: { business: Business; onBack: () => vo
           tone,
         }),
       });
-      const json = await res.json();
-      if (!res.ok) {
-        toast.error(json.error || "Failed to generate");
-      } else {
-        setReview(json.review);
-        setStep(resultStep);
-      }
+      setReview(json.review);
+      setStep(resultStep);
     } catch (err) {
-      toast.error("Network error");
+      toast.error(authErrorMessage(err));
     } finally {
       setGenerating(false);
     }
   }
 
   async function action(action: "regenerate" | "shorten" | "natural" | "translate" | "copy", target?: "English" | "Hinglish" | "Hindi") {
+    if (action === "copy") {
+      try { await navigator.clipboard.writeText(review); toast.success("Review copied to clipboard"); void track(business.id, "review_copied"); }
+      catch { toast.error("Clipboard unavailable. Select the review text and copy it manually."); }
+      return;
+    }
     setGenerating(true);
     try {
-      const res = await fetch("/api/ai/review", {
+      const json = await requestJson<{ review: string }>("/api/ai/review", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -627,17 +633,9 @@ function ReviewView({ business, onBack }: { business: Business; onBack: () => vo
           language: target || language,
         }),
       });
-      const json = await res.json();
-      if (!res.ok) {
-        toast.error(json.error || "Failed");
-      } else {
-        setReview(json.review);
-        if (action === "copy") {
-          toast.success("Review copied to clipboard");
-        }
-      }
+      setReview(json.review);
     } catch (err) {
-      toast.error("Network error");
+      toast.error(authErrorMessage(err));
     } finally {
       setGenerating(false);
     }
@@ -738,7 +736,7 @@ function ReviewView({ business, onBack }: { business: Business; onBack: () => vo
             options={["English", "Hinglish", "Hindi"]}
             value={language}
             onChange={(v) => {
-              setLanguage(v as any);
+              setLanguage(v as typeof language);
               setStep(toneStep);
             }}
           />
@@ -750,7 +748,7 @@ function ReviewView({ business, onBack }: { business: Business; onBack: () => vo
             options={["Natural", "Friendly", "Short", "Detailed"]}
             value={tone}
             onChange={(v) => {
-              setTone(v as any);
+              setTone(v as typeof tone);
               setStep(generateStep);
             }}
           />
@@ -759,8 +757,8 @@ function ReviewView({ business, onBack }: { business: Business; onBack: () => vo
         {step === generateStep ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-5">
             <p className="text-sm text-slate-600">
-              Based on your answers, we'll craft a review draft using <strong>only</strong>{" "}
-              what you've told us.
+              Based on your answers, we will craft a review draft using <strong>only</strong>{" "}
+              what you have told us.
             </p>
             <Button
               className="mt-5 w-full"
@@ -991,18 +989,22 @@ function CommentQuestion({
 
 // =============================================================
 function WifiView({ business, onBack }: { business: Business; onBack: () => void }) {
-  React.useEffect(() => {
-    track(business.id, "wifi_view");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [wifi, setWifi] = useState<{ name: string | null; password: string | null; security: string } | null>(null);
+  const [qrSvgUrl, setQrSvgUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [copied, setCopied] = useState<"name" | "password" | null>(null);
-  const qrData = buildWifiQrString(
-    business.wifiName || "",
-    business.wifiPassword || "",
-    business.wifiSecurity || "WPA"
-  );
-
-  const qrSvgUrl = `/api/wifi-qr?d=${encodeURIComponent(qrData)}`;
+  React.useEffect(() => {
+    let active = true;
+    void track(business.id, "wifi_view");
+    requestJson<{ name: string | null; password: string | null; security: string }>(`/api/public/${encodeURIComponent(business.slug)}/wifi`)
+      .then(async (details) => {
+        const image = await QRCode.toDataURL(buildWifiQrString(details.name || "", details.password || "", details.security), { margin: 2, errorCorrectionLevel: "M", width: 512 });
+        if (active) { setWifi(details); setQrSvgUrl(image); setError(null); }
+      })
+      .catch((failure) => { if (active) setError(authErrorMessage(failure)); });
+    return () => { active = false; };
+  }, [business.id, business.slug, attempt]);
 
   async function copy(value: string, kind: "name" | "password") {
     try {
@@ -1022,36 +1024,37 @@ function WifiView({ business, onBack }: { business: Business; onBack: () => void
         Back
       </button>
 
+      {error ? <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}<Button size="sm" className="ml-3" onClick={() => setAttempt((value) => value + 1)}>Retry</Button></div> : null}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 text-center">
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-950 text-white">
           <Wifi className="h-7 w-7" />
         </div>
         <h2 className="mt-3 text-xl font-extrabold text-slate-950">Connect to Wi-Fi</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Scan this QR with your phone's camera to join instantly.
+          Scan this QR with your phone camera to join instantly.
         </p>
 
         <div className="mx-auto mt-5 inline-block rounded-2xl border border-slate-200 bg-white p-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qrSvgUrl} alt="Wi-Fi QR" className="h-44 w-44" />
+          {qrSvgUrl ? <img src={qrSvgUrl} alt="Wi-Fi QR" className="h-44 w-44" /> : <p role="status">Loading guest Wi-Fi…</p>}
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2 text-left">
           <InfoTile
             label="Network"
-            value={business.wifiName || "—"}
-            onCopy={() => business.wifiName && copy(business.wifiName, "name")}
+            value={wifi?.name || "—"}
+            onCopy={() => wifi?.name && copy(wifi?.name, "name")}
             copied={copied === "name"}
           />
           <InfoTile
             label="Security"
-            value={business.wifiSecurity || "WPA"}
+            value={wifi?.security || "WPA"}
           />
-          {business.wifiPassword ? (
+          {wifi?.password ? (
             <InfoTile
               label="Password"
-              value={business.wifiPassword}
-              onCopy={() => business.wifiPassword && copy(business.wifiPassword, "password")}
+              value={wifi?.password}
+              onCopy={() => wifi?.password && copy(wifi?.password, "password")}
               copied={copied === "password"}
               full
               secret
@@ -1107,8 +1110,8 @@ function SharePanel({ business }: { business: Business }) {
 
   async function copyLink() {
     if (!url) return;
-    await navigator.clipboard.writeText(url);
-    toast.success("Link copied");
+    try { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
+    catch { toast.error("Clipboard unavailable. Select the page URL and copy it manually."); }
   }
 
   return (
@@ -1186,6 +1189,3 @@ async function track(businessId: string, type: string) {
     });
   } catch {}
 }
-
-// React import for hooks
-import React from "react";

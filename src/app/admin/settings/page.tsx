@@ -1,4 +1,5 @@
 import { requireActiveBusiness } from "@/lib/admin";
+import { serverBusinessUrl } from "@/lib/server-url";
 import { SettingsClient } from "./SettingsClient";
 
 export const dynamic = "force-dynamic";
@@ -10,5 +11,5 @@ export default async function SettingsPage({
 }) {
   const sp = await searchParams;
   const { business } = await requireActiveBusiness(sp);
-  return <SettingsClient business={business} />;
+  return <SettingsClient business={business} publicUrl={await serverBusinessUrl(business.slug)} />;
 }

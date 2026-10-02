@@ -1,38 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { QrCode, Mail, Lock } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { AuthRecovery } from "@/components/auth/AuthRecovery";
+import { authErrorMessage } from "@/lib/firebase/errors";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("demo@bakecafe.test");
-  const [password, setPassword] = useState("demo1234");
+  const auth = useAuth();
+  const [message, setMessage] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  useEffect(() => { if (auth.isAuthenticated) router.replace("/dashboard"); }, [auth.isAuthenticated, router]);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        toast.error(json.error || "Login failed");
-      } else {
-        toast.success("Welcome back!");
-        router.push("/admin");
-        router.refresh();
-      }
-    } catch (err) {
-      toast.error("Network error");
+      setMessage(null);
+      await auth.login(email, password);
+      toast.success("Welcome back!");
+      router.replace("/dashboard");
+      router.refresh();
+    } catch (error) {
+      setMessage(authErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -40,7 +38,6 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
-      <Toaster />
       {/* Left visual */}
       <aside className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-orange-50 to-amber-100 p-12">
         <Link href="/" className="flex items-center gap-2">
@@ -66,10 +63,12 @@ export default function LoginPage() {
           <div className="mb-8 text-center lg:text-left">
             <h2 className="text-2xl font-bold text-slate-950">Sign in</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Use the demo credentials below — they're pre-filled for convenience.
+              Sign in to manage your businesses and QR experience.
             </p>
           </div>
 
+          <AuthRecovery />
+          {message || auth.error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{message || auth.error}</p> : null}
           <form onSubmit={onSubmit} className="space-y-4">
             <Field label="Email" htmlFor="email">
               <div className="relative">
@@ -77,6 +76,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   required
                   className="pl-9"
                   value={email}
@@ -91,6 +91,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   required
                   className="pl-9"
                   value={password}
@@ -100,22 +101,16 @@ export default function LoginPage() {
               </div>
             </Field>
 
-            <Button type="submit" loading={loading} className="w-full" size="lg">
+            <Button type="submit" loading={loading || auth.loading} className="w-full" size="lg">
               Sign in
             </Button>
           </form>
 
-          <div className="mt-6 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4 text-sm">
-            <p className="font-semibold text-amber-900">Demo credentials</p>
-            <p className="mt-1 text-amber-900/80">
-              Email: <code>demo@bakecafe.test</code>
-              <br />
-              Password: <code>demo1234</code>
-            </p>
-          </div>
+          <div className="mt-4 text-center"><Link href="/forgot-password" className="text-sm font-semibold underline">Forgot password?</Link></div>
+          {auth.googleEnabled ? <Button variant="secondary" className="mt-4 w-full" disabled={loading || auth.loading} onClick={async () => { setLoading(true); setMessage(null); try { await auth.loginWithGoogle(); router.replace("/dashboard"); router.refresh(); } catch (error) { setMessage(authErrorMessage(error)); } finally { setLoading(false); } }}>Sign in with Google</Button> : null}
 
           <p className="mt-6 text-center text-sm text-slate-600">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/register" className="font-semibold text-slate-900 underline">
               Create one
             </Link>

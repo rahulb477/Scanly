@@ -1,5 +1,5 @@
 import { requireActiveBusiness } from "@/lib/admin";
-import { publicBusinessUrl } from "@/lib/utils";
+import { serverBusinessUrl } from "@/lib/server-url";
 import { QrClient } from "./QrClient";
 
 export const dynamic = "force-dynamic";
@@ -11,5 +11,5 @@ export default async function QrPage({
 }) {
   const sp = await searchParams;
   const { business } = await requireActiveBusiness(sp);
-  return <QrClient business={business} publicUrl={publicBusinessUrl(business.slug)} />;
+  return <QrClient business={business} publicUrl={await serverBusinessUrl(business.slug)} />;
 }

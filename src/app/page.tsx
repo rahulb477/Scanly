@@ -1,7 +1,4 @@
 import Link from "next/link";
-import { db } from "@/db";
-import { ensureSeed } from "@/lib/seed";
-import { sql } from "drizzle-orm";
 import {
   QrCode,
   Star,
@@ -17,14 +14,6 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  await db.execute(sql`select 1`);
-  // Make sure demo business exists
-  try {
-    await ensureSeed();
-  } catch (err) {
-    console.error("seed error", err);
-  }
-
   return (
     <main className="min-h-screen bg-gradient-to-b from-white via-orange-50/30 to-white">
       {/* Top nav */}
@@ -41,7 +30,7 @@ export default async function HomePage() {
           </Link>
           <nav className="flex items-center gap-2">
             <Link
-              href="/b/bake-cafe"
+              href="/register"
               className="hidden sm:inline-flex h-10 items-center rounded-lg px-4 text-sm font-medium text-slate-700 hover:bg-slate-100"
             >
               Live Demo
@@ -80,10 +69,10 @@ export default async function HomePage() {
                 Open dashboard <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/b/bake-cafe"
+                href="/register"
                 className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-sm font-medium text-slate-900 hover:bg-slate-50"
               >
-                Try live demo business
+                Create your business page
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
@@ -148,8 +137,8 @@ export default async function HomePage() {
       </section>
 
       <footer className="border-t border-slate-100 py-8 text-center text-sm text-slate-500">
-        © {new Date().getFullYear()} Scanly · Demo business:{" "}
-        <Link href="/b/bake-cafe" className="text-slate-700 underline">/b/bake-cafe</Link>
+        © {new Date().getFullYear()} Scanly · Get started:{" "}
+        <Link href="/register" className="text-slate-700 underline">Create an account</Link>
       </footer>
     </main>
   );

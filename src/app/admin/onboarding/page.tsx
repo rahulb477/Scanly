@@ -15,6 +15,6 @@ export default async function OnboardingPage({
   const businesses = await getBusinessesForUser(user.id);
   const business =
     businesses.find((b) => b.id === sp.businessId) || businesses[0];
-  if (!business) redirect("/admin");
+  if (!business) redirect("/dashboard");
   return <OnboardingClient business={business} />;
 }

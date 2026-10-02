@@ -1,11 +1,15 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { uploadBusinessImage } from "@/lib/firebase/storage";
+import { authErrorMessage } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Business } from "@/db/schema";
+import type { Business } from "@/lib/data/types";
 import { Card, CardHeader, Field, Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Save, ImageIcon } from "lucide-react";
 
 export function ProfileForm({ business }: { business: Business }) {
@@ -25,38 +29,26 @@ export function ProfileForm({ business }: { business: Business }) {
     tagline: business.tagline || "",
   });
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   function set<K extends keyof typeof data>(k: K, v: (typeof data)[K]) {
     setData((d) => ({ ...d, [k]: v }));
   }
 
-  function readFile(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function onUpload(field: "logo" | "coverImage", file: File) {
-    if (file.size > 1_500_000) {
-      toast.error("Image must be smaller than 1.5MB");
-      return;
-    }
+    setUploadProgress(0);
     try {
-      const dataUrl = await readFile(file);
-      set(field, dataUrl as any);
-      toast.success("Image ready (save to apply)");
-    } catch {
-      toast.error("Upload failed");
-    }
+      const url = await uploadBusinessImage(business.id, field === "logo" ? "logos" : "covers", file, setUploadProgress);
+      set(field, url);
+      toast.success("Image uploaded. Save your profile to apply it.");
+    } catch (error) { toast.error(authErrorMessage(error)); }
+    finally { setUploadProgress(null); }
   }
 
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${business.id}`, {
+      const res = await authenticatedFetch(`/api/businesses/${business.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(data),
@@ -68,8 +60,8 @@ export function ProfileForm({ business }: { business: Business }) {
         toast.success("Profile saved");
         router.refresh();
       }
-    } catch {
-      toast.error("Network error");
+    } catch (error) {
+      toast.error(authErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -77,7 +69,6 @@ export function ProfileForm({ business }: { business: Business }) {
 
   return (
     <div className="space-y-6">
-      <Toaster />
       <div>
         <h1 className="text-2xl font-extrabold text-slate-950">Business Profile</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -85,6 +76,7 @@ export function ProfileForm({ business }: { business: Business }) {
         </p>
       </div>
 
+      {uploadProgress !== null ? <div role="status" className="text-sm">Uploading image: {uploadProgress}%<progress className="ml-3" max={100} value={uploadProgress} /></div> : null}
       <Card>
         <CardHeader title="Identity" subtitle="Name, category and logo" />
         <div className="grid gap-4 p-5 md:grid-cols-2">
@@ -137,7 +129,7 @@ export function ProfileForm({ business }: { business: Business }) {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={save} loading={saving} leftIcon={<Save className="h-4 w-4" />}>
+        <Button onClick={save} loading={saving} disabled={uploadProgress !== null} leftIcon={<Save className="h-4 w-4" />}>
           Save profile
         </Button>
       </div>
@@ -175,7 +167,7 @@ function ImageBox({
             Upload
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -190,7 +182,7 @@ function ImageBox({
           ) : null}
         </div>
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">Stored as base64. Max 1.5 MB.</p>
+      <p className="mt-2 text-[11px] text-slate-500">Stored in Firebase Storage. JPEG, PNG or WebP; max 5 MB.</p>
     </div>
   );
 }
