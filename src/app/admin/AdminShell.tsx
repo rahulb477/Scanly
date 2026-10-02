@@ -1,8 +1,11 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { authErrorMessage } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Store,
@@ -22,25 +25,26 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
 import { Input, Field, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import type { Business } from "@/db/schema";
-import type { SessionUser } from "@/lib/auth";
+import type { Business } from "@/lib/data/types";
+import type { SessionUser } from "@/lib/data/types";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const nav = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/profile", label: "Business Profile", icon: Store },
-  { href: "/admin/qr", label: "QR Codes", icon: QrCode },
-  { href: "/admin/ai", label: "AI Review", icon: Sparkles },
-  { href: "/admin/menu", label: "Digital Menu", icon: UtensilsCrossed },
-  { href: "/admin/social", label: "Social Links", icon: Share2 },
-  { href: "/admin/wifi", label: "Wi-Fi", icon: Wifi },
-  { href: "/admin/google", label: "Google Review", icon: Star },
-  { href: "/admin/appearance", label: "Appearance", icon: Palette },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/profile", label: "Business Profile", icon: Store },
+  { href: "/dashboard/qr", label: "QR Codes", icon: QrCode },
+  { href: "/dashboard/ai", label: "AI Review", icon: Sparkles },
+  { href: "/dashboard/menu", label: "Digital Menu", icon: UtensilsCrossed },
+  { href: "/dashboard/social", label: "Social Links", icon: Share2 },
+  { href: "/dashboard/wifi", label: "Wi-Fi", icon: Wifi },
+  { href: "/dashboard/google", label: "Google Review", icon: Star },
+  { href: "/dashboard/appearance", label: "Appearance", icon: Palette },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 export function AdminShell({
@@ -55,7 +59,9 @@ export function AdminShell({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(businesses[0]?.id || null);
+  const search = useSearchParams();
+  const { logout: firebaseLogout } = useAuth();
+  const activeId = search.get("businessId") || businesses[0]?.id;
   const [showCreate, setShowCreate] = useState(false);
 
   const active = businesses.find((b) => b.id === activeId) || businesses[0];
@@ -66,14 +72,13 @@ export function AdminShell({
   }
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    try { await firebaseLogout(); }
+    catch (error) { toast.error(authErrorMessage(error)); }
+    finally { router.replace("/login"); router.refresh(); }
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Toaster />
       {/* Mobile top bar */}
       <div className="lg:hidden sticky top-0 z-40 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200">
@@ -96,7 +101,7 @@ export function AdminShell({
           )}
         >
           <div className="flex h-14 items-center justify-between border-b border-slate-100 px-4">
-            <Link href="/admin" className="flex items-center gap-2">
+            <Link href="/dashboard" className="flex items-center gap-2">
               <div className="grid h-8 w-8 place-items-center rounded-lg bg-slate-950 text-white">
                 <QrCode className="h-4 w-4" />
               </div>
@@ -128,10 +133,9 @@ export function AdminShell({
                   <button
                     key={b.id}
                     onClick={() => {
-                      setActiveId(b.id);
                       setOpen(false);
                       // navigate so server can read businessId from search
-                      router.push(`/admin?businessId=${b.id}`);
+                      router.push(`/dashboard?businessId=${b.id}`);
                       router.refresh();
                     }}
                     className={cn(
@@ -176,7 +180,7 @@ export function AdminShell({
               return (
                 <Link
                   key={item.href}
-                  href={item.href + (isCurrent ? "" : `?businessId=${active?.id || ""}`)}
+                  href={item.href + (active ? `?businessId=${active.id}` : "")}
                   onClick={() => setOpen(false)}
                   className={cn(
                     "mt-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
@@ -235,8 +239,7 @@ export function AdminShell({
         open={showCreate}
         onClose={() => setShowCreate(false)}
         onCreated={(id) => {
-          setActiveId(id);
-          router.push(`/admin?businessId=${id}`);
+          router.push(`/dashboard/onboarding?businessId=${id}`);
           router.refresh();
         }}
       />
@@ -261,7 +264,7 @@ function CreateBusinessModal({
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/businesses", {
+      const res = await authenticatedFetch("/api/businesses", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ businessName: name, category }),
@@ -275,8 +278,8 @@ function CreateBusinessModal({
         onClose();
         setName("");
       }
-    } catch (err) {
-      toast.error("Network error");
+    } catch (error) {
+      toast.error(authErrorMessage(error));
     } finally {
       setLoading(false);
     }

@@ -41,10 +41,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
 
 export function Label({ children, htmlFor, hint }: { children: React.ReactNode; htmlFor?: string; hint?: string }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-slate-800">
-      {children}
-      {hint ? <span className="ml-1 text-xs font-normal text-slate-500">{hint}</span> : null}
-    </label>
+    <div className="mb-1.5 flex flex-wrap items-baseline gap-x-1">
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-800">{children}</label>
+      {hint ? <span id={htmlFor ? `${htmlFor}-hint` : undefined} className="text-xs font-normal text-slate-500">{hint}</span> : null}
+    </div>
   );
 }
 

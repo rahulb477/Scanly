@@ -2,7 +2,7 @@
 
 import { Card, CardHeader } from "@/components/ui/Input";
 import { ResponsiveContainer, LineChart, Line as RLine, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend } from "recharts";
-import type { AnalyticsEvent } from "@/db/schema";
+import type { AnalyticsEvent } from "@/lib/data/types";
 import { useState } from "react";
 
 const COLORS = ["#0f172a", "#d97706", "#0ea5e9", "#16a34a", "#db2777", "#7c3aed", "#dc2626", "#0891b2", "#65a30d", "#9333ea"];
@@ -14,27 +14,7 @@ const rangeOptions = [
   { value: "all", label: "All Time" },
 ];
 
-export function AnalyticsClient({ events, range }: { events: AnalyticsEvent[]; range: string }) {
-  // Series
-  const days = range === "all" ? 30 : parseInt(range);
-  const series: Record<string, { scans: number; events: number }> = {};
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400_000);
-    const k = d.toISOString().slice(0, 10);
-    series[k] = { scans: 0, events: 0 };
-  }
-  for (const e of events) {
-    const k = e.createdAt.toISOString().slice(0, 10);
-    if (!series[k]) continue;
-    if (e.type === "qr_scan") series[k].scans += 1;
-    else series[k].events += 1;
-  }
-  const chartData = Object.entries(series).map(([date, v]) => ({
-    date: date.slice(5),
-    Scans: v.scans,
-    Events: v.events,
-  }));
-
+export function AnalyticsClient({ events, range, chartData, businessId }: { events: AnalyticsEvent[]; range: string; chartData: { date: string; Scans: number; Clicks: number }[]; businessId: string }) {
   // Distribution
   const dist: Record<string, number> = {};
   for (const e of events) dist[e.type] = (dist[e.type] || 0) + 1;
@@ -46,13 +26,13 @@ export function AnalyticsClient({ events, range }: { events: AnalyticsEvent[]; r
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold">Analytics</h1>
-          <p className="mt-1 text-sm text-slate-500">Total tracked: {total} events.</p>
+          <p className="mt-1 text-sm text-slate-500">Total tracked: {total} events. {range === "all" ? "Timeline: last 30 UTC days; totals include all history." : "Calendar days use UTC."}</p>
         </div>
         <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 text-sm">
           {rangeOptions.map((o) => (
             <a
               key={o.value}
-              href={`?range=${o.value}`}
+              href={`?range=${o.value}&businessId=${businessId}`}
               className={`rounded-lg px-3 py-1.5 font-medium ${
                 range === o.value ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
@@ -75,7 +55,7 @@ export function AnalyticsClient({ events, range }: { events: AnalyticsEvent[]; r
                 <Tooltip contentStyle={{ background: "#0f172a", color: "#fff", borderRadius: 8, border: "none", fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <RLine type="monotone" dataKey="Scans" stroke="#0f172a" strokeWidth={2} dot={false} />
-                <RLine type="monotone" dataKey="Events" stroke="#d97706" strokeWidth={2} dot={false} />
+                <RLine type="monotone" dataKey="Clicks" stroke="#d97706" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>

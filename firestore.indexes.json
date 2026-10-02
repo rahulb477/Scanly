@@ -1,0 +1,8 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    { "collectionGroup": "members", "fieldPath": "uid", "indexes": [{ "order": "ASCENDING", "queryScope": "COLLECTION" }, { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }] },
+    { "collectionGroup": "reviewSessions", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "_rateLimits", "fieldPath": "expiresAt", "ttl": true, "indexes": [] }
+  ]
+}

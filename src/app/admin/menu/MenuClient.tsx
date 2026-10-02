@@ -1,12 +1,16 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { uploadBusinessImage } from "@/lib/firebase/storage";
+import { authErrorMessage, ClientError } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Business, MenuCategory, MenuItem } from "@/db/schema";
+import type { Business, MenuCategory, MenuItem } from "@/lib/data/types";
 import { Card, CardHeader, Field, Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Plus, Edit2, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, ImageIcon } from "lucide-react";
 
 export function MenuClient({
@@ -26,8 +30,9 @@ export function MenuClient({
   const [itemCatId, setItemCatId] = useState<string | null>(null);
 
   async function addCategory() {
+    try {
     if (!newCatName.trim()) return;
-    const res = await fetch(`/api/menu/categories`, {
+    const res = await authenticatedFetch(`/api/menu/categories`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ businessId: business.id, name: newCatName.trim() }),
@@ -41,62 +46,73 @@ export function MenuClient({
       setShowCat(false);
       router.refresh();
     }
+    } catch (error) { toast.error(authErrorMessage(error)); }
   }
 
   async function deleteCategory(id: string) {
+    try {
     if (!confirm("Delete this category and all its items?")) return;
-    const res = await fetch(`/api/menu/categories/${id}`, { method: "DELETE" });
+    const res = await authenticatedFetch(`/api/menu/categories/${id}?businessId=${business.id}`, { method: "DELETE" });
     if (!res.ok) {
       toast.error("Failed");
     } else {
       toast.success("Category deleted");
       router.refresh();
     }
+    } catch (error) { toast.error(authErrorMessage(error)); }
   }
 
   async function toggleItem(id: string, available: boolean) {
-    await fetch(`/api/menu/items/${id}`, {
+    try {
+    const response = await authenticatedFetch(`/api/menu/items/${id}?businessId=${business.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ available: !available }),
     });
+    if (!response.ok) throw new ClientError((await response.json()).error || "Could not update availability.");
     router.refresh();
+    } catch (error) { toast.error(authErrorMessage(error)); }
   }
 
   async function deleteItem(id: string) {
+    try {
     if (!confirm("Delete this item?")) return;
-    const res = await fetch(`/api/menu/items/${id}`, { method: "DELETE" });
+    const res = await authenticatedFetch(`/api/menu/items/${id}?businessId=${business.id}`, { method: "DELETE" });
     if (!res.ok) {
       toast.error("Failed");
     } else {
       toast.success("Item deleted");
       router.refresh();
     }
+    } catch (error) { toast.error(authErrorMessage(error)); }
   }
 
   async function moveItem(id: string, direction: "up" | "down") {
-    const sorted = [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+    try {
+    const categoryId = items.find((item) => item.id === id)?.categoryId;
+    const sorted = items.filter((item) => item.categoryId === categoryId).sort((a, b) => a.sortOrder - b.sortOrder);
     const idx = sorted.findIndex((i) => i.id === id);
     const swap = direction === "up" ? idx - 1 : idx + 1;
     if (swap < 0 || swap >= sorted.length) return;
-    await Promise.all([
-      fetch(`/api/menu/items/${id}`, {
+    const responses = await Promise.all([
+      authenticatedFetch(`/api/menu/items/${id}?businessId=${business.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sortOrder: sorted[swap].sortOrder }),
       }),
-      fetch(`/api/menu/items/${sorted[swap].id}`, {
+      authenticatedFetch(`/api/menu/items/${sorted[swap].id}?businessId=${business.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sortOrder: sorted[idx].sortOrder }),
       }),
     ]);
+    for (const response of responses) { if (!response.ok) throw new ClientError((await response.json()).error || "Could not reorder items."); }
     router.refresh();
+    } catch (error) { toast.error(authErrorMessage(error)); }
   }
 
   return (
     <div className="space-y-6">
-      <Toaster />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-950">Digital Menu</h1>
@@ -183,7 +199,7 @@ export function MenuClient({
                         <button onClick={() => moveItem(it.id, "down")} className="rounded p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Move down">
                           <ArrowDown className="h-3.5 w-3.5" />
                         </button>
-                        <button onClick={() => toggleItem(it.id, it.available)} className="rounded p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Toggle availability">
+                        <button onClick={() => toggleItem(it.id, it.available)} className="rounded p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Toggle availability" aria-pressed={it.available}>
                           {it.available ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                         </button>
                         <button
@@ -262,23 +278,13 @@ function ItemForm({
   const [image, setImage] = useState(initial?.image || "");
   const [catId, setCatId] = useState(initial?.categoryId || categoryId);
   const [loading, setLoading] = useState(false);
-
-  function readFile(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-  }
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   async function upload(file: File) {
-    if (file.size > 1_500_000) {
-      toast.error("Image too large (max 1.5MB)");
-      return;
-    }
-    const url = await readFile(file);
-    setImage(url);
+    setUploadProgress(0);
+    try { setImage(await uploadBusinessImage(businessId, "menu", file, setUploadProgress)); }
+    catch (error) { toast.error(authErrorMessage(error)); }
+    finally { setUploadProgress(null); }
   }
 
   async function save() {
@@ -289,7 +295,7 @@ function ItemForm({
     setLoading(true);
     try {
       if (initial) {
-        const res = await fetch(`/api/menu/items/${initial.id}`, {
+        const res = await authenticatedFetch(`/api/menu/items/${initial.id}?businessId=${businessId}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -306,7 +312,7 @@ function ItemForm({
           return;
         }
       } else {
-        const res = await fetch(`/api/menu/items`, {
+        const res = await authenticatedFetch(`/api/menu/items`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -327,6 +333,8 @@ function ItemForm({
       toast.success("Saved");
       onClose();
       router.refresh();
+    } catch (error) {
+      toast.error(authErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -350,7 +358,7 @@ function ItemForm({
           <div className="flex items-center gap-2">
             <label className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">
               Upload
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
             </label>
             {image ? <button onClick={() => setImage("")} className="text-xs text-red-600">Remove</button> : null}
             {image ? (
@@ -361,7 +369,8 @@ function ItemForm({
         </Field>
       </div>
       <Field label="Description"><Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
-      <Button onClick={save} loading={loading} className="w-full" size="lg">{initial ? "Save changes" : "Add item"}</Button>
+      {uploadProgress !== null ? <p role="status">Uploading image: {uploadProgress}%</p> : null}
+      <Button onClick={save} disabled={uploadProgress !== null} loading={loading} className="w-full" size="lg">{initial ? "Save changes" : "Add item"}</Button>
     </div>
   );
 }

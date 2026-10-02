@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/lora";
+import "@fontsource/dm-serif-display/400.css";
+import { Toaster } from "@/components/ui/Toast";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Scanly — QR Customer Engagement SaaS",
@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="bg-slate-50 text-slate-900 antialiased">{children}</body>
+    <html lang="en">
+      <body className="bg-slate-50 text-slate-900 antialiased"><AuthProvider><Toaster />{children}</AuthProvider></body>
     </html>
   );
 }

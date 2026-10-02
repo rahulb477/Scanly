@@ -1,49 +1,82 @@
 {
-  "name": "nextjs-postgresql-template",
+  "name": "scanly",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --hostname 0.0.0.0",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "node scripts/firebase-emulators.mjs integration",
+    "test:e2e": "node scripts/firebase-emulators.mjs e2e",
+    "test:all": "node scripts/firebase-emulators.mjs all",
+    "dev:emulators": "node scripts/firebase-emulators.mjs dev",
+    "migrate:export": "node --conditions=react-server --import tsx scripts/export-postgres.ts",
+    "migrate:import": "node --conditions=react-server --import tsx scripts/import-firestore.ts"
   },
   "dependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.10",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/lora": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
+    "@fontsource/dm-serif-display": "^5.3.0",
     "@types/qrcode": "^1.5.6",
-    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
-    "cookie": "^2.0.1",
     "date-fns": "^4.4.0",
     "dotenv": "17.3.1",
-    "drizzle-orm": "0.45.2",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "html2canvas": "^1.4.1",
-    "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.469.0",
     "nanoid": "^6.0.1",
-    "next": "16.2.6",
-    "pg": "8.20.0",
+    "next": "16.3.8",
     "qrcode": "^1.5.4",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-hot-toast": "^2.6.1",
     "recharts": "^3.10.1",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "4.1.17",
     "@types/node": "22.19.15",
     "@types/pg": "8.18.0",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "drizzle-kit": "0.31.10",
+    "drizzle-orm": "0.45.2",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.6",
-    "postcss": "8.5.8",
+    "eslint-config-next": "16.3.8",
+    "firebase-tools": "^15.32.1",
+    "jsqr": "^1.4.0",
+    "pg": "8.20.0",
+    "pngjs": "^7.0.0",
+    "postcss": "^8.5.28",
     "tailwindcss": "4.1.17",
-    "typescript": "5.9.3"
-  }
+    "tsx": "^4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.5",
+    "uuid": "^11.1.1",
+    "gaxios@6.7.1": "^7.3.1",
+    "basic-ftp": "^6.2.1",
+    "@opentelemetry/core": "^2.11.0",
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.12"
+    }
+  },
+  "type": "module"
 }

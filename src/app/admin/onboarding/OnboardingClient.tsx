@@ -1,11 +1,15 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { uploadBusinessImage } from "@/lib/firebase/storage";
+import { authErrorMessage } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Business } from "@/db/schema";
+import type { Business } from "@/lib/data/types";
 import { Card, CardHeader, Field, Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import {
   ArrowLeft,
   ArrowRight,
@@ -59,6 +63,7 @@ export function OnboardingClient({ business }: { business: Business }) {
     whatsappUrl: business.whatsappUrl || "",
     websiteUrl: business.websiteUrl || "",
     wifiEnabled: business.wifiEnabled,
+    wifiPublicSharingEnabled: business.wifiPublicSharingEnabled,
     wifiName: business.wifiName || "",
     wifiPassword: business.wifiPassword || "",
     wifiSecurity: (business.wifiSecurity || "WPA") as "WPA" | "WEP" | "Open",
@@ -68,6 +73,7 @@ export function OnboardingClient({ business }: { business: Business }) {
     backgroundColor: business.backgroundColor,
     tagline: business.tagline || "",
   });
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -75,19 +81,10 @@ export function OnboardingClient({ business }: { business: Business }) {
     setData((d) => ({ ...d, [k]: v }));
   }
 
-  function readFile(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-  }
-
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${business.id}`, {
+      const res = await authenticatedFetch(`/api/businesses/${business.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(data),
@@ -98,8 +95,8 @@ export function OnboardingClient({ business }: { business: Business }) {
         return false;
       }
       return true;
-    } catch {
-      toast.error("Network error");
+    } catch (error) {
+      toast.error(authErrorMessage(error));
       return false;
     } finally {
       setSaving(false);
@@ -134,7 +131,6 @@ export function OnboardingClient({ business }: { business: Business }) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <Toaster />
       <div>
         <p className="text-sm text-slate-500">Setup wizard</p>
         <h1 className="text-2xl font-extrabold text-slate-950">Get your QR live in minutes</h1>
@@ -162,6 +158,7 @@ export function OnboardingClient({ business }: { business: Business }) {
         })}
       </div>
 
+      {uploadProgress !== null ? <p role="status">Uploading logo: {uploadProgress}%</p> : null}
       <Card>
         <CardHeader
           title={steps[step].label}
@@ -184,7 +181,7 @@ export function OnboardingClient({ business }: { business: Business }) {
 
           {step === 1 ? (
             <div>
-              <p className="text-sm text-slate-700">Upload your logo (PNG, JPG, max 1.5MB).</p>
+              <p className="text-sm text-slate-700">Upload your logo (PNG, JPG or WebP, max 5MB).</p>
               <div className="mt-3 flex items-center gap-3">
                 <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-xl bg-slate-100">
                   {data.logo ? (
@@ -199,13 +196,15 @@ export function OnboardingClient({ business }: { business: Business }) {
                     Upload logo
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       className="hidden"
                       onChange={async (e) => {
                         const f = e.target.files?.[0];
                         if (f) {
-                          if (f.size > 1_500_000) return toast.error("Max 1.5MB");
-                          set("logo", await readFile(f));
+                          setUploadProgress(0);
+                          try { set("logo", await uploadBusinessImage(business.id, "logos", f, setUploadProgress)); }
+                          catch (error) { toast.error(authErrorMessage(error)); }
+                          finally { setUploadProgress(null); }
                         }
                       }}
                     />
@@ -290,6 +289,10 @@ export function OnboardingClient({ business }: { business: Business }) {
                 />
                 <span className="text-sm font-medium">Show Wi-Fi on customer page</span>
               </label>
+              <label className="flex items-center gap-3 text-sm">
+                <input type="checkbox" checked={data.wifiPublicSharingEnabled} onChange={(e) => set("wifiPublicSharingEnabled", e.target.checked)} />
+                I authorize publishing these guest Wi-Fi credentials to anyone opening the customer Wi-Fi card.
+              </label>
               <div className="grid gap-4 md:grid-cols-3">
                 <Field label="Network name"><Input value={data.wifiName} onChange={(e) => set("wifiName", e.target.value)} /></Field>
                 <Field label="Password"><Input value={data.wifiPassword} onChange={(e) => set("wifiPassword", e.target.value)} /></Field>
@@ -297,7 +300,7 @@ export function OnboardingClient({ business }: { business: Business }) {
                   <select
                     className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
                     value={data.wifiSecurity}
-                    onChange={(e) => set("wifiSecurity", e.target.value as any)}
+                    onChange={(e) => set("wifiSecurity", e.target.value as "WPA" | "WEP" | "Open")}
                   >
                     <option value="WPA">WPA / WPA2</option>
                     <option value="WEP">WEP</option>
@@ -367,7 +370,7 @@ export function OnboardingClient({ business }: { business: Business }) {
         <Button variant="secondary" onClick={back} disabled={step === 0} leftIcon={<ArrowLeft className="h-4 w-4" />}>
           Back
         </Button>
-        <Button onClick={next} loading={saving} rightIcon={<ArrowRight className="h-4 w-4" />}>
+        <Button onClick={next} loading={saving} disabled={uploadProgress !== null} rightIcon={<ArrowRight className="h-4 w-4" />}>
           {step === steps.length - 1 ? "Finish setup" : "Save & continue"}
         </Button>
       </div>
@@ -387,8 +390,8 @@ function DoneStep({ businessId }: { businessId: string }) {
         Your business is ready. Head over to the QR Codes page to download and print your QR.
       </p>
       <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-        <Button onClick={() => router.push(`/admin/qr?businessId=${businessId}`)}>Go to QR Codes</Button>
-        <Button variant="secondary" onClick={() => router.push(`/admin?businessId=${businessId}`)}>Dashboard</Button>
+        <Button onClick={() => router.push(`/dashboard/qr?businessId=${businessId}`)}>Go to QR Codes</Button>
+        <Button variant="secondary" onClick={() => router.push(`/dashboard?businessId=${businessId}`)}>Dashboard</Button>
       </div>
     </div>
   );

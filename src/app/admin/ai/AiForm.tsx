@@ -1,11 +1,14 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { authErrorMessage } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Business } from "@/db/schema";
+import type { Business } from "@/lib/data/types";
 import { Card, CardHeader, Field, Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Save, Sparkles } from "lucide-react";
 
 export function AiForm({ business }: { business: Business }) {
@@ -24,7 +27,7 @@ export function AiForm({ business }: { business: Business }) {
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${business.id}`, {
+      const res = await authenticatedFetch(`/api/businesses/${business.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(data),
@@ -35,6 +38,8 @@ export function AiForm({ business }: { business: Business }) {
         toast.success("Saved");
         router.refresh();
       }
+    } catch (error) {
+      toast.error(authErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -42,7 +47,6 @@ export function AiForm({ business }: { business: Business }) {
 
   return (
     <div className="space-y-6">
-      <Toaster />
       <div>
         <h1 className="text-2xl font-extrabold">AI Review</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -55,7 +59,7 @@ export function AiForm({ business }: { business: Business }) {
         <div className="divide-y divide-slate-100">
           <Toggle
             title="Show reviews section"
-            description="Master switch — turn off if you don't want any review flow."
+            description="Master switch — turn off if you do not want any review flow."
             checked={data.reviewEnabled}
             onChange={(v) => set("reviewEnabled", v)}
           />
@@ -78,7 +82,7 @@ export function AiForm({ business }: { business: Business }) {
         <CardHeader title="How it works" subtitle="Honest, never fabricated" />
         <ul className="space-y-2 p-5 text-sm text-slate-600">
           <li>• Asks about overall, staff, language and tone.</li>
-          <li>• Generates a draft using only the customer's own answers.</li>
+          <li>• Generates a draft using only the customer&apos;s own answers.</li>
           <li>• Customer edits, copies and posts on Google themselves.</li>
           <li>• Multi-language support: English, Hinglish, Hindi.</li>
         </ul>

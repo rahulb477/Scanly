@@ -15,7 +15,7 @@ html, body {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
+  font-family: "Inter Variable", Inter, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -79,4 +79,17 @@ body {
 /* Prevent iOS zoom on focus */
 input, select, textarea {
   font-size: 16px;
+}
+
+/* Stored appearance options apply only to the public customer experience. */
+.scanly-public[data-card-style="square"] .rounded-2xl { border-radius: 4px; }
+.scanly-public[data-card-style="pill"] .rounded-2xl { border-radius: 24px; }
+.scanly-public[data-button-style="outline"] button.bg-slate-900 {
+  background: transparent !important;
+  color: var(--customer-primary) !important;
+  border: 1px solid var(--customer-primary);
+}
+.scanly-public[data-button-style="soft"] button.bg-slate-900 {
+  background: color-mix(in srgb, var(--customer-primary) 12%, white) !important;
+  color: var(--customer-primary) !important;
 }

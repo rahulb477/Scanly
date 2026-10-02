@@ -1,9 +1,10 @@
 "use client";
 
+import { businessFontStack } from "@/lib/typography";
 import React, { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, Field, Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import {
   QrCode as QrIcon,
   Download,
@@ -13,7 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import QRCode from "qrcode";
-import type { Business } from "@/db/schema";
+import type { Business } from "@/lib/data/types";
 import { PRINTABLE_THEMES, getPrintableTheme } from "@/lib/printable-themes";
 import jsPDF from "jspdf";
 
@@ -26,7 +27,7 @@ export function QrClient({ business, publicUrl }: { business: Business; publicUr
   useEffect(() => {
     QRCode.toCanvas(canvasRef.current, publicUrl, {
       width: size,
-      margin: 1,
+      margin: 4,
       errorCorrectionLevel: "H",
       color: { dark: "#0f172a", light: "#ffffff" },
     }).catch(() => toast.error("QR generation failed"));
@@ -43,7 +44,7 @@ export function QrClient({ business, publicUrl }: { business: Business; publicUr
   async function downloadSvg() {
     const svg = await QRCode.toString(publicUrl, {
       type: "svg",
-      margin: 1,
+      margin: 4,
       errorCorrectionLevel: "H",
       color: { dark: "#0f172a", light: "#ffffff" },
     });
@@ -57,14 +58,16 @@ export function QrClient({ business, publicUrl }: { business: Business; publicUr
   }
 
   function copyLink() {
+    if (!navigator.clipboard?.writeText) { toast.error("Clipboard unavailable. Select the public URL and copy it manually."); return; }
     navigator.clipboard.writeText(publicUrl).then(
       () => toast.success("Public URL copied"),
-      () => toast.error("Copy failed")
+      () => toast.error("Clipboard permission denied. Select the public URL and copy it manually.")
     );
   }
 
   async function downloadPrintablePng() {
     if (!printableRef.current) return;
+    await document.fonts.ready;
     const html2canvas = (await import("html2canvas")).default;
     const canvas = await html2canvas(printableRef.current, {
       backgroundColor: getPrintableTheme(theme).bg,
@@ -79,6 +82,7 @@ export function QrClient({ business, publicUrl }: { business: Business; publicUr
 
   async function downloadPrintablePdf() {
     if (!printableRef.current) return;
+    await document.fonts.ready;
     const html2canvas = (await import("html2canvas")).default;
     const canvas = await html2canvas(printableRef.current, {
       backgroundColor: getPrintableTheme(theme).bg,
@@ -99,26 +103,25 @@ export function QrClient({ business, publicUrl }: { business: Business; publicUr
 
   async function downloadPrintableSvg() {
     if (!printableRef.current) return;
+    await document.fonts.ready;
     const html2canvas = (await import("html2canvas")).default;
     const canvas = await html2canvas(printableRef.current, {
       backgroundColor: getPrintableTheme(theme).bg,
       scale: 2,
       useCORS: true,
     });
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}"><image width="${canvas.width}" height="${canvas.height}" href="${canvas.toDataURL("image/png")}"/></svg>`;
+    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${business.slug}-printable.png`;
+    a.download = `${business.slug}-printable.svg`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Saved PNG (SVG export uses PNG raster for the card)");
+    toast.success("Saved SVG with an embedded high-resolution card image");
   }
 
   return (
     <div className="space-y-6">
-      <Toaster />
       <div>
         <h1 className="text-2xl font-extrabold text-slate-950">QR Codes</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -148,7 +151,7 @@ export function QrClient({ business, publicUrl }: { business: Business; publicUr
               className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
             >
               {[512, 1024, 2048, 4096].map((s) => (
-                <option key={s} value={s}>{s}px ({(s / 96).toFixed(1)}" @ 96dpi)</option>
+                <option key={s} value={s}>{s}px ({(s / 96).toFixed(1)}&quot; @ 96dpi)</option>
               ))}
             </select>
           </Field>
@@ -228,7 +231,7 @@ const PrintableCard = React.forwardRef<HTMLDivElement, CardProps>(
     useEffect(() => {
       QRCode.toDataURL(publicUrl, {
         width: 600,
-        margin: 1,
+        margin: 4,
         errorCorrectionLevel: "H",
         color: { dark: "#000", light: "#ffffff" },
       }).then(setQrDataUrl).catch(() => {});
@@ -244,7 +247,7 @@ const PrintableCard = React.forwardRef<HTMLDivElement, CardProps>(
           width: 420,
           height: 560,
           padding: 28,
-          fontFamily: "Inter, system-ui, sans-serif",
+          fontFamily: businessFontStack(business.font),
         }}
       >
         {/* Decorative corner illustration */}

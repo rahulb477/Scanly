@@ -1,11 +1,14 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { authErrorMessage } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Business } from "@/db/schema";
+import type { Business } from "@/lib/data/types";
 import { Card, CardHeader, Field, Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Instagram, Facebook, Youtube, Globe, MessageCircle, Twitter, Save } from "lucide-react";
 
 export function SocialForm({ business }: { business: Business }) {
@@ -27,7 +30,7 @@ export function SocialForm({ business }: { business: Business }) {
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${business.id}`, {
+      const res = await authenticatedFetch(`/api/businesses/${business.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(data),
@@ -38,6 +41,8 @@ export function SocialForm({ business }: { business: Business }) {
         toast.success("Social links saved");
         router.refresh();
       }
+    } catch (error) {
+      toast.error(authErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -45,7 +50,6 @@ export function SocialForm({ business }: { business: Business }) {
 
   return (
     <div className="space-y-6">
-      <Toaster />
       <div>
         <h1 className="text-2xl font-extrabold text-slate-950">Social Links</h1>
         <p className="mt-1 text-sm text-slate-500">

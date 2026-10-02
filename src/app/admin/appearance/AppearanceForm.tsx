@@ -1,11 +1,15 @@
 "use client";
 
+import { businessFontStack } from "@/lib/typography";
+import { authenticatedFetch } from "@/lib/firebase/authenticated-fetch";
+import { authErrorMessage } from "@/lib/firebase/errors";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Business } from "@/db/schema";
+import type { Business } from "@/lib/data/types";
 import { Card, CardHeader, Field, Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Toaster, toast } from "@/components/ui/Toast";
+import { toast } from "@/components/ui/Toast";
 import { Save } from "lucide-react";
 import { THEME_PRESETS, getTheme } from "@/lib/themes";
 
@@ -42,7 +46,7 @@ export function AppearanceForm({ business }: { business: Business }) {
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${business.id}`, {
+      const res = await authenticatedFetch(`/api/businesses/${business.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(data),
@@ -53,6 +57,8 @@ export function AppearanceForm({ business }: { business: Business }) {
         toast.success("Theme saved");
         router.refresh();
       }
+    } catch (error) {
+      toast.error(authErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -60,7 +66,6 @@ export function AppearanceForm({ business }: { business: Business }) {
 
   return (
     <div className="space-y-6">
-      <Toaster />
       <div>
         <h1 className="text-2xl font-extrabold">Appearance</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -142,7 +147,7 @@ export function AppearanceForm({ business }: { business: Business }) {
           <CardHeader title="Live preview" subtitle={`/b/${business.slug}`} />
           <div
             className="m-5 rounded-2xl"
-            style={{ background: data.backgroundColor, color: "#0f172a", padding: 20, fontFamily: data.font }}
+            style={{ background: data.backgroundColor, color: "#0f172a", padding: 20, fontFamily: businessFontStack(data.font) }}
           >
             <div
               className="rounded-xl p-4"
@@ -164,8 +169,11 @@ export function AppearanceForm({ business }: { business: Business }) {
             >
               <p className="text-xs uppercase tracking-wider opacity-60">Share Your Experience</p>
               <p className="text-sm font-bold">{data.tagline || "Help us grow with your review"}</p>
-              <button
+              <a
+                href={`/b/${business.slug}`}
+                target="_blank" rel="noopener noreferrer"
                 style={{
+                  display: "block", textAlign: "center",
                   marginTop: 12,
                   width: "100%",
                   padding: "10px 14px",
@@ -177,8 +185,8 @@ export function AppearanceForm({ business }: { business: Business }) {
                   fontSize: 13,
                 }}
               >
-                Leave a Google Review
-              </button>
+                Preview customer page
+              </a>
             </div>
           </div>
         </Card>

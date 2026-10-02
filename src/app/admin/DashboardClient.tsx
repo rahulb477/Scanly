@@ -29,6 +29,7 @@ import {
 } from "recharts";
 
 type Props = {
+  businessId: string;
   businessName: string;
   slug: string;
   stats: Record<string, number>;
@@ -55,6 +56,7 @@ const rangeOptions = [
 ];
 
 export function DashboardClient({
+  businessId,
   businessName,
   slug,
   stats,
@@ -71,7 +73,7 @@ export function DashboardClient({
             Public page: <code className="rounded bg-slate-100 px-1.5 py-0.5">/b/{slug}</code>
           </p>
         </div>
-        <RangePicker current={range} />
+        <RangePicker current={range} businessId={businessId} />
       </div>
 
       {/* Stat tiles */}
@@ -84,7 +86,6 @@ export function DashboardClient({
                 <div className={`grid h-10 w-10 place-items-center rounded-xl ${t.accent} text-white`}>
                   <t.icon className="h-5 w-5" />
                 </div>
-                <Badge variant="default">+{Math.max(0, Math.round(v / Math.max(1, 30)))}</Badge>
               </div>
               <p className="mt-4 text-2xl font-extrabold text-slate-950">{v}</p>
               <p className="text-xs text-slate-500">{t.label}</p>
@@ -192,7 +193,7 @@ export function DashboardClient({
           title="Quick links"
           action={
             <a
-              href={`/admin/onboarding?businessId=${slug}`}
+              href={`/dashboard/onboarding?businessId=${businessId}`}
               className="text-xs font-semibold text-slate-700 underline"
             >
               Run setup wizard
@@ -200,10 +201,10 @@ export function DashboardClient({
           }
         />
         <div className="grid grid-cols-2 gap-2 p-5 sm:grid-cols-4">
-          <QuickLink href={`/admin/qr?businessId=${slug}`} label="QR Code" icon={QrCode} />
-          <QuickLink href={`/admin/menu?businessId=${slug}`} label="Menu" icon={UtensilsCrossed} />
-          <QuickLink href={`/admin/wifi?businessId=${slug}`} label="Wi-Fi" icon={Wifi} />
-          <QuickLink href={`/admin/appearance?businessId=${slug}`} label="Theme" icon={Sparkles} />
+          <QuickLink href={`/dashboard/qr?businessId=${businessId}`} label="QR Code" icon={QrCode} />
+          <QuickLink href={`/dashboard/menu?businessId=${businessId}`} label="Menu" icon={UtensilsCrossed} />
+          <QuickLink href={`/dashboard/wifi?businessId=${businessId}`} label="Wi-Fi" icon={Wifi} />
+          <QuickLink href={`/dashboard/appearance?businessId=${businessId}`} label="Theme" icon={Sparkles} />
         </div>
       </Card>
     </div>
@@ -256,13 +257,13 @@ function QuickLink({ href, label, icon: Icon }: { href: string; label: string; i
   );
 }
 
-function RangePicker({ current }: { current: string }) {
+function RangePicker({ current, businessId }: { current: string; businessId: string }) {
   return (
     <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 text-sm">
       {rangeOptions.map((o) => (
         <a
           key={o.value}
-          href={`?range=${o.value}`}
+          href={`?range=${o.value}&businessId=${businessId}`}
           className={`rounded-lg px-3 py-1.5 font-medium ${
             current === o.value ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-100"
           }`}

@@ -1,25 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
+import { z } from "zod";
+import { apiErrorResponse, jsonBody } from "@/lib/api";
 
-export async function GET(req: NextRequest) {
-  const d = req.nextUrl.searchParams.get("d");
-  if (!d || d.length > 500) {
-    return NextResponse.json({ error: "Invalid data" }, { status: 400 });
-  }
+// POST prevents Wi-Fi passwords from appearing in URLs, browser history and logs.
+export async function POST(request: NextRequest) {
   try {
-    const svg = await QRCode.toString(d, {
-      type: "svg",
-      margin: 1,
-      errorCorrectionLevel: "H",
-      color: { dark: "#0f172a", light: "#ffffff" },
-    });
-    return new NextResponse(svg, {
-      headers: {
-        "content-type": "image/svg+xml",
-        "cache-control": "public, max-age=3600",
-      },
-    });
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
+    const { data } = z.strictObject({ data: z.string().min(1).max(2000).startsWith("WIFI:") }).parse(await jsonBody(request));
+    const svg = await QRCode.toString(data, { type: "svg", margin: 2, errorCorrectionLevel: "M", color: { dark: "#0f172a", light: "#ffffff" } });
+    return new NextResponse(svg, { headers: { "Content-Type": "image/svg+xml", "Cache-Control": "no-store, private", "X-Robots-Tag": "noindex, nofollow" } });
+  } catch (error) { return apiErrorResponse(error); }
 }
