@@ -1,5 +1,5 @@
-probe-run: 2026-10-02T17:53:59Z
-commit: 40c3c234660e5327c5d86c8823deab550ad42655
+probe-run: 2026-10-02T18:20:46Z
+commit: 9877d7dd0307b845ff8ffe06559402975e521bde
 origin: https://scanly-jade.vercel.app
 ==================== GET /api/diagnostics/firebase
 status|content-type: 200|application/json
@@ -9,42 +9,42 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/diagnostics/firebase
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::vmjt7-1790963639936-601b1ce2f02d
---- body (first 1500 bytes)
-{"generatedAt":"2026-10-02T17:54:00.302Z","runtime":"nodejs","node":"v24.21.0","vercel":true,"vercelEnv":"production","emulatorHosts":{"auth":null,"firestore":null},"environment":{"NEXT_PUBLIC_FIREBASE_API_KEY":true,"NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN":true,"NEXT_PUBLIC_FIREBASE_PROJECT_ID":true,"NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET":true,"NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID":true,"NEXT_PUBLIC_FIREBASE_APP_ID":true,"NEXT_PUBLIC_APP_URL":true,"FIREBASE_PROJECT_ID":true,"FIREBASE_CLIENT_EMAIL":true,"FIREBASE_PRIVATE_KEY":true,"FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS":false},"project":{"adminProjectId":"restaurant-flow-59183","webProjectId":"restaurant-flow-59183","match":true},"clientEmail":{"present":true,"isServiceAccount":false,"length":28,"hasAtSign":true,"wrappedInQuotes":false,"looksLikeJson":false},"privateKey":{"present":true,"length":2402,"hasPemHeader":true,"hasPemFooter":true,"hasEscapedNewlines":true,"hasRealNewlines":true,"wrappedInQuotes":false,"looksLikeJson":true},"import:firebase-admin/app":{"status":"ok","ms":88},"import:firebase-admin/auth":{"status":"ok","ms":151},"import:firebase-admin/firestore":{"status":"ok","ms":544},"import:firebase-admin/storage":{"status":"ok","ms":6},"import:@/lib/firebase/admin":{"status":"ok","ms":2},"credentials:resolve":{"status":"ok","ms":1},"credentials":{"source":"service-account-json","unwrappedJson":true,"serviceAccountProject":"restaurant-flow-59183","serviceAccountProjectMatches":true},"credentials:parse-private-ke
+x-vercel-id: sfo1::iad1::48sv5-1790965246213-33efb3b65c35
+--- body (first 8000 bytes)
+{"generatedAt":"2026-10-02T18:20:46.508Z","runtime":"nodejs","node":"v24.21.0","vercel":true,"vercelEnv":"production","emulatorHosts":{"auth":null,"firestore":null},"environment":{"NEXT_PUBLIC_FIREBASE_API_KEY":true,"NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN":true,"NEXT_PUBLIC_FIREBASE_PROJECT_ID":true,"NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET":true,"NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID":true,"NEXT_PUBLIC_FIREBASE_APP_ID":true,"NEXT_PUBLIC_APP_URL":true,"FIREBASE_PROJECT_ID":true,"FIREBASE_CLIENT_EMAIL":true,"FIREBASE_PRIVATE_KEY":true,"FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS":false},"project":{"adminProjectId":"restaurant-flow-59183","webProjectId":"restaurant-flow-59183","match":true},"clientEmail":{"present":true,"isServiceAccount":false,"length":28,"hasAtSign":true,"wrappedInQuotes":false,"looksLikeJson":false},"privateKey":{"present":true,"length":2402,"hasPemHeader":true,"hasPemFooter":true,"hasEscapedNewlines":true,"hasRealNewlines":true,"wrappedInQuotes":false,"looksLikeJson":true},"import:firebase-admin/app":{"status":"ok","ms":70},"import:firebase-admin/auth":{"status":"ok","ms":132},"import:firebase-admin/firestore":{"status":"ok","ms":337},"import:firebase-admin/storage":{"status":"ok","ms":5},"import:@/lib/firebase/admin":{"status":"ok","ms":1},"credentials:resolve":{"status":"ok","ms":1},"credentials":{"source":"service-account-json","unwrappedJson":true,"serviceAccountProject":"restaurant-flow-59183","serviceAccountProjectMatches":true},"credentials:parse-private-key":{"status":"ok","ms":1},"admin:getFirebaseAdminApp":{"status":"ok","ms":1},"credentials:access-token":{"status":"failed","ms":107,"name":"Error","message":"invalid_grant: Invalid JWT Signature.","code":400},"admin:getAdminAuth":{"status":"ok","ms":13},"admin:getAdminDb":{"status":"ok","ms":2},"firestore:read":{"status":"failed","ms":1941,"name":"Error","message":"16 UNAUTHENTICATED: Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.","code":16},"auth:listUsers":{"status":"failed","ms":28,"name":"Error","message":"Credential implementation provided to initializeApp() via the \"credential\" property failed to fetch a valid Google OAuth2 access token with the following error: \"invalid_grant: Invalid JWT Signature.\". There are two likely causes: (1) your server time is not properly synced or (2) your certificate key file has been revoked. To solve (1), re-sync the time on your server. To solve (2), make sure the key ID for your key file is still present at https://console.firebase.google.com/iam-admin/servicea…[truncated]","code":"app/invalid-credential"},"failingSteps":["credentials:access-token","firestore:read","auth:listUsers"],"ok":false,"verdict":{"loginCanSucceed":false,"configurationIncomplete":false,"credentialRejectedByGoogle":true,"missingEnvironment":[],"projectMismatch":false,"requiredAction":"Generate a NEW service-account private key in Firebase Console > Project settings > Service accounts, set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in Vercel (Production), then redeploy."}}
 ==================== GET /api/health
-status|content-type: 500|application/json
+status|content-type: 503|application/json
 --- headers (safe subset)
 cache-control: public, max-age=0, must-revalidate
 content-type: application/json
 server: Vercel
 x-matched-path: /api/health
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::jztjr-1790963643406-35ee9bb0c88a
---- body (first 1500 bytes)
-{"error":"The server could not complete this request. Check Firebase configuration and service permissions.","code":"server/request-failed"}
+x-vercel-id: sfo1::iad1::hwvt6-1790965249285-c01e5db197b6
+--- body (first 8000 bytes)
+{"error":"Server Firebase configuration is incomplete. Ask the administrator to check the service-account credentials, IAM roles and redeploy.","code":"server/request-failed"}
 ==================== GET /api/public/probe/wifi
-status|content-type: 500|application/json
+status|content-type: 503|application/json
 --- headers (safe subset)
 cache-control: public, max-age=0, must-revalidate
 content-type: application/json
 server: Vercel
 x-matched-path: /api/public/[slug]/wifi
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::mvdz2-1790963647492-8d67f6d15b63
---- body (first 1500 bytes)
-{"error":"The server could not complete this request. Check Firebase configuration and service permissions.","code":"server/request-failed"}
+x-vercel-id: sfo1::iad1::zrr95-1790965249936-58a915b38809
+--- body (first 8000 bytes)
+{"error":"Server Firebase configuration is incomplete. Ask the administrator to check the service-account credentials, IAM roles and redeploy.","code":"server/request-failed"}
 ==================== GET /api/menu/public?businessId=probe
-status|content-type: 500|application/json
+status|content-type: 503|application/json
 --- headers (safe subset)
 cache-control: public, max-age=0, must-revalidate
 content-type: application/json
 server: Vercel
 x-matched-path: /api/menu/public
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::2ldvb-1790963648122-df5beacfc298
---- body (first 1500 bytes)
-{"error":"The server could not complete this request. Check Firebase configuration and service permissions.","code":"server/request-failed"}
+x-vercel-id: sfo1::iad1::2nqql-1790965251442-114492527537
+--- body (first 8000 bytes)
+{"error":"Server Firebase configuration is incomplete. Ask the administrator to check the service-account credentials, IAM roles and redeploy.","code":"server/request-failed"}
 ==================== GET /dashboard (no session cookie)
 status|content-type: 307|text/html; charset=utf-8
 --- headers (safe subset)
@@ -54,9 +54,9 @@ location: /login
 server: Vercel
 x-matched-path: /admin
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::kmwq6-1790963649617-8ee533ff5dfe
---- body (first 1500 bytes)
-<!DOCTYPE html><html id="__next_error__"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/immutable/chunks/1mlftcslf095m.js"/><script src="/_next/static/immutable/chunks/0ws7t_wz4dvp7.js" async=""></script><script src="/_next/static/immutable/chunks/18w_8czt8e6-c.js" async=""></script><script src="/_next/static/immutable/chunks/1vnwmvn44pzp2.js" async=""></script><script src="/_next/static/immutable/chunks/turbopack-01p0n4t7w2rl3.js" async=""></script><title>Scanly — QR Customer Engagement SaaS</title><meta name="description" content="Collect genuine customer feedback, generate AI-assisted review drafts, share digital menus, Wi-Fi and social links through a single QR code."/><script src="/_next/static/immutable/chunks/0c0hxoamwjsbw.js" noModule=""></script></head><body><div hidden=""><!--$--><!--/$--></div><script src="/_next/static/immutable/chunks/1mlftcslf095m.js" id="_R_" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0])</script><script>self.__next_f.push([1,"1:\"$Sreact.fragment\"\n2:I[2594,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/3j4-3_4obikph.js\"],\"AuthProvider\"]\n3:I[88840,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/3j4-3_4obikph.js\"],\
+x-vercel-id: sfo1::iad1::9d9jl-1790965252046-f99090379624
+--- body (first 8000 bytes)
+<!DOCTYPE html><html id="__next_error__"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/immutable/chunks/1mlftcslf095m.js"/><script src="/_next/static/immutable/chunks/0ws7t_wz4dvp7.js" async=""></script><script src="/_next/static/immutable/chunks/0kg7cvzmze0pk.js" async=""></script><script src="/_next/static/immutable/chunks/1vnwmvn44pzp2.js" async=""></script><script src="/_next/static/immutable/chunks/turbopack-1cl8-c7yh2mb9.js" async=""></script><title>Scanly — QR Customer Engagement SaaS</title><meta name="description" content="Collect genuine customer feedback, generate AI-assisted review drafts, share digital menus, Wi-Fi and social links through a single QR code."/><script src="/_next/static/immutable/chunks/0c0hxoamwjsbw.js" noModule=""></script></head><body><div hidden=""><!--$--><!--/$--></div><script src="/_next/static/immutable/chunks/1mlftcslf095m.js" id="_R_" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0])</script><script>self.__next_f.push([1,"1:\"$Sreact.fragment\"\n2:I[2594,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"AuthProvider\"]\n3:I[88840,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"Toaster\"]\n4:I[39756,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"default\"]\n5:I[58298,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\",\"/_next/static/immutable/chunks/2p34qvwmev57p.js\",\"/_next/static/immutable/chunks/3lr5s_s9vo0uy.js\"],\"default\"]\n6:I[37457,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"default\"]\n7:I[39756,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"LoadingBoundaryProvider\"]\na:I[97367,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"OutletBoundary\"]\nb:\"$Sreact.suspense\"\nd:I[97367,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"ViewportBoundary\"]\nf:I[97367,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"MetadataBoundary\"]\n11:I[68027,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/02n-igto6pkh2.js\"],\"default\",1]\n:HL[\"/_next/static/immutable/chunks/29lpswhfwgjjw.css\",\"style\"]\n:HC[\"/\",\"\"]\n0:{\"P\":null,\"c\":[\"\",\"dashboard\"],\"q\":\"\",\"i\":false,\"f\":[[[\"\",{\"children\":[\"admin\",{\"children\":[\"__PAGE__\",{},\"$undefined\",\"$undefined\",4096]},\"$undefined\",\"$undefined\",4100]},\"$undefined\",\"$undefined\",4120],[[\"$\",\"$1\",\"c\",{\"children\":[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/29lpswhfwgjjw.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"$undefined\"}],[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"async\":true,\"nonce\":\"$undefined\"}],[\"$\",\"script\",\"script-1\",{\"src\":\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"async\":true,\"nonce\":\"$undefined\"}],[\"$\",\"script\",\"script-2\",{\"src\":\"/_next/static/immutable/chunks/02n-igto6pkh2.js\",\"async\":true,\"nonce\":\"$undefined\"}]],[\"$\",\"html\",null,{\"lang\":\"en\",\"children\":[\"$\",\"body\",null,{\"className\":\"bg-slate-50 text-slate-900 antialiased\",\"children\":[\"$\",\"$L2\",null,{\"children\":[[\"$\",\"$L3\",null,{}],[\"$\",\"$L4\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$5\",\"errorStyles\":[],\"errorScripts\":[[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/2p34qvwmev57p.js\",\"async\":true,\"nonce\":\"$undefined\"}],[\"$\",\"script\",\"script-1\",{\"src\":\"/_next/static/immutable/chunks/3lr5s_s9vo0uy.js\",\"async\":true,\"nonce\":\"$undefined\"}]],\"template\":[\"$\",\"$L6\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":[[[\"$\",\"title\",null,{\"children\":\"404: This page could not be found.\"}],[\"$\",\"div\",null,{\"style\":{\"fontFamily\":\"system-ui,\\\"Segoe UI\\\",Roboto,Helvetica,Arial,sans-serif,\\\"Apple Color Emoji\\\",\\\"Segoe UI Emoji\\\"\",\"height\":\"100vh\",\"textAlign\":\"center\",\"display\":\"flex\",\"flexDirection\":\"column\",\"alignItems\":\"center\",\"justifyContent\":\"center\"},\"children\":[\"$\",\"div\",null,{\"children\":[[\"$\",\"style\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\"}}],[\"$\",\"h1\",null,{\"className\":\"next-error-h1\",\"style\":{\"display\":\"inline-block\",\"margin\":\"0 20px 0 0\",\"padding\":\"0 23px 0 0\",\"fontSize\":24,\"fontWeight\":500,\"verticalAlign\":\"top\",\"lineHeight\":\"49px\"},\"children\":404}],[\"$\",\"div\",null,{\"style\":{\"display\":\"inline-block\"},\"children\":[\"$\",\"h2\",null,{\"style\":{\"fontSize\":14,\"fontWeight\":400,\"lineHeight\":\"49px\",\"margin\":0},\"children\":\"This page could not be found.\"}]}]]}]}]],[]],\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}]]}]}]}]]}],{\"children\":[[\"$\",\"$L7\",null,{\"loading\":[[\"$\",\"p\",\"l\",{\"role\":\"status\",\"className\":\"p-8\",\"children\":\"Loading your dashboard…\"}],[],null],\"children\":[\"$\",\"$1\",\"c\",{\"children\":[[[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/0g8ob579uqb_4.js\",\"async\":true,\"nonce\":\"$undefined\"}],[\"$\",\"script\",\"script-1\",{\"src\":\"/_next/static/immutable/chunks/3lr5s_s9vo0uy.js\",\"async\":true,\"nonce\":\"$undefined\"}]],\"$L8\"]}]}],{\"children\":[[\"$\",\"$1\",\"c\",{\"children\":[\"$L9\",[[\"$\",\"script\",\"script-0\",{\"src\":\"/_next/static/immutable/chunks/1ock8qgeeqic_.js\",\"async\":true,\"nonce\":\"$undefined\"}],[\"$\",\"script\",\"script-1\",{\"src\":\"/_next/static/immutable/chunks/1j_ft_3qb687n.js\",\"async\":true,\"nonce\":\"$undefined\"}],[\"$\",\"script\",\"script-2\",{\"src\":\"/_next/static/immutable/chunks/0rzl5cnb9wcg-.js\",\"async\":true,\"nonce\":\"$undefined\"}]],[\"$\",\"$La\",null,{\"children\":[\"$\",\"$b\",null,{\"name\":\"Next.MetadataOutlet\",\"children\":\"$@c\"}]}]]}],{},null,false,null]},null,false,null]},null,false,null],[\"$\",\"$1\",\"h\",{\"children\":[null,[\"$\",\"$Ld\",null,{\"children\":\"$Le\"}],[\"$\",\"div\",null,{\"hidden\":true,\"children\":[\"$\",\"$Lf\",null,{\"children\":[\"$\",\"$b\",null,{\"name\":\"Next.Metadata\",\"children\":\"$L10\"}]}]}],[\"$\",\"meta\",null,{\"name\":\"next-size-adjust\",\"content\":\"\"}]]}],false]],\"m\":\"$undefined\",\"G\":[\"$11\",[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/immutable/chunks/29lpswhfwgjjw.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"$undefined\"}]]],\"S\":false,\"h\":null,\"r\":\"$undefined\",\"s\":\"$undefined\",\"a\":\"$undefined\",\"l\":\"$undefined\",\"p\":\"$undefined\",\"d\":\"$undefined\",\"b\":\"wl4RCwcLvKBZtz-o6_QnF\"}\n8:E{\"digest\":\"NEXT_REDIRECT;replac
 ==================== POST /api/auth/session (invalid token, same-origin)
 status|content-type: 401|application/json
 --- headers (safe subset)
@@ -65,8 +65,8 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/auth/session
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::nhczf-1790963651309-86b604d9370c
---- body (first 1500 bytes)
+x-vercel-id: sfo1::iad1::zzn2d-1790965253396-e46b20e68cb5
+--- body (first 8000 bytes)
 {"error":"Authentication session could not be verified.","code":"auth/user-token-expired"}
 ==================== POST /api/auth/session (no origin header)
 status|content-type: 403|application/json
@@ -76,9 +76,64 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/auth/session
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::rgdhw-1790963652941-66536bab40f9
---- body (first 1500 bytes)
+x-vercel-id: sfo1::iad1::bbc8f-1790965253600-370574d636e4
+--- body (first 8000 bytes)
 {"error":"Cross-origin session requests are not allowed.","code":"request/cross-origin"}
+==================== diagnostics verdict (jq, safe fields only)
+{
+  "ok": false,
+  "failingSteps": [
+    "credentials:access-token",
+    "firestore:read",
+    "auth:listUsers"
+  ],
+  "verdict": {
+    "loginCanSucceed": false,
+    "configurationIncomplete": false,
+    "credentialRejectedByGoogle": true,
+    "missingEnvironment": [],
+    "projectMismatch": false,
+    "requiredAction": "Generate a NEW service-account private key in Firebase Console > Project settings > Service accounts, set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in Vercel (Production), then redeploy."
+  },
+  "project": {
+    "adminProjectId": "restaurant-flow-59183",
+    "webProjectId": "restaurant-flow-59183",
+    "match": true
+  },
+  "privateKey": {
+    "present": true,
+    "hasPemHeader": true,
+    "hasPemFooter": true,
+    "looksLikeJson": true
+  },
+  "credentials": {
+    "source": "service-account-json",
+    "unwrappedJson": true,
+    "serviceAccountProject": "restaurant-flow-59183",
+    "serviceAccountProjectMatches": true
+  },
+  "credentials:access-token": {
+    "status": "failed",
+    "ms": 25,
+    "name": "Error",
+    "message": "invalid_grant: Invalid JWT Signature.",
+    "code": 400
+  },
+  "auth:listUsers": {
+    "status": "failed",
+    "ms": 26,
+    "name": "Error",
+    "message": "Credential implementation provided to initializeApp() via the \"credential\" property failed to fetch a valid Google OAuth2 access token with the following error: \"invalid_grant: Invalid JWT Signature.\". There are two likely causes: (1) your server time is not properly synced or (2) your certificate key file has been revoked. To solve (1), re-sync the time on your server. To solve (2), make sure the key ID for your key file is still present at https://console.firebase.google.com/iam-admin/servicea…[truncated]",
+    "code": "app/invalid-credential"
+  },
+  "firestore:read": {
+    "status": "failed",
+    "ms": 332,
+    "name": "Error",
+    "message": "16 UNAUTHENTICATED: Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
+    "code": 16
+  }
+}
 ==================== build id from /login
 /_next/static/immutable/
 ==================== end
