@@ -1,0 +1,73 @@
+probe-run: 2026-10-02T17:01:19Z
+commit: 6248328a03da4157f4008efb6b232bbdc93f013a
+origin: https://scanly-jade.vercel.app
+==================== GET /api/health
+status|content-type: 500|
+--- headers (safe subset)
+cache-control: public, max-age=0, must-revalidate
+server: Vercel
+x-matched-path: /api/health
+x-vercel-cache: MISS
+x-vercel-id: iad1::iad1::swq2f-1790960479867-cfdafebc1775
+content-length: 0
+--- body (first 1500 bytes)
+
+==================== GET /api/public/probe/wifi
+status|content-type: 500|
+--- headers (safe subset)
+cache-control: public, max-age=0, must-revalidate
+server: Vercel
+x-matched-path: /api/public/[slug]/wifi
+x-vercel-cache: MISS
+x-vercel-id: iad1::iad1::5zrwh-1790960479940-1cd786271c61
+content-length: 0
+--- body (first 1500 bytes)
+
+==================== GET /api/menu/public?businessId=probe
+status|content-type: 500|
+--- headers (safe subset)
+cache-control: public, max-age=0, must-revalidate
+server: Vercel
+x-matched-path: /api/menu/public
+x-vercel-cache: MISS
+x-vercel-id: iad1::iad1::bgmqg-1790960480018-ba046530941e
+content-length: 0
+--- body (first 1500 bytes)
+
+==================== GET /dashboard (no session cookie)
+status|content-type: 500|text/html; charset=utf-8
+--- headers (safe subset)
+cache-control: public, max-age=0, must-revalidate
+content-type: text/html; charset=utf-8
+server: Vercel
+x-matched-path: /500
+x-vercel-cache: MISS
+x-vercel-id: iad1::9xl52-1790960480181-daf22bebac49
+content-length: 8993
+--- body (first 1500 bytes)
+<!DOCTYPE html><html id="__next_error__"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/immutable/chunks/1mlftcslf095m.js"/><script src="/_next/static/immutable/chunks/0ws7t_wz4dvp7.js" async=""></script><script src="/_next/static/immutable/chunks/2o-z0q3llz5d0.js" async=""></script><script src="/_next/static/immutable/chunks/1vnwmvn44pzp2.js" async=""></script><script src="/_next/static/immutable/chunks/turbopack-3ih6uf_wf0c8w.js" async=""></script><script src="/_next/static/immutable/chunks/2corl6wyj4669.js" async=""></script><meta name="next-size-adjust" content=""/><title>500: This page couldn’t load</title><style>:root {--next-error-bg: #fff;--next-error-text: #171717;--next-error-title: #171717;--next-error-message: #171717;--next-error-digest: #666666;--next-error-btn-text: #fff;--next-error-btn-bg: #171717;--next-error-btn-border: none;--next-error-btn-secondary-text: #171717;--next-error-btn-secondary-bg: transparent;--next-error-btn-secondary-border: 1px solid rgba(0,0,0,0.08);}@media (prefers-color-scheme: dark) {:root {--next-error-bg: #0a0a0a;--next-error-text: #ededed;--next-error-title: #ededed;--next-error-message: #ededed;--next-error-digest: #a0a0a0;--next-error-btn-text: #0a0a0a;--next-error-btn-bg: #ededed;--next-error-btn-border: none;--next-error-btn-secondary-text: #ededed;--next-error-btn-secondary-bg: transparent;--next-error-bt
+==================== POST /api/auth/session (invalid token, same-origin)
+status|content-type: 500|
+--- headers (safe subset)
+cache-control: public, max-age=0, must-revalidate
+server: Vercel
+x-matched-path: /api/auth/session
+x-vercel-cache: MISS
+x-vercel-id: iad1::iad1::f4bqm-1790960481657-6e476bba7211
+content-length: 0
+--- body (first 1500 bytes)
+
+==================== POST /api/auth/session (no origin header)
+status|content-type: 500|
+--- headers (safe subset)
+cache-control: public, max-age=0, must-revalidate
+server: Vercel
+x-matched-path: /api/auth/session
+x-vercel-cache: MISS
+x-vercel-id: iad1::iad1::84vg2-1790960481797-58e7228efa1d
+content-length: 0
+--- body (first 1500 bytes)
+
+==================== build id from /login
+/_next/static/immutable/
+==================== end

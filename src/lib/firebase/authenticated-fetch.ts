@@ -15,7 +15,7 @@ export async function authenticatedFetch(url: string, init: RequestInit = {}): P
   try { response = await fetch(url, { ...init, headers, cache: "no-store" }); }
   catch { throw new ClientError("Unable to reach the server. Check your connection and try again.", "client/network-unavailable"); }
   if (!response.headers.get("content-type")?.includes("application/json")) {
-    throw new ClientError("The server returned an unexpected response. Check the server Firebase configuration.", "client/invalid-response", response.status);
+    throw new ClientError(`The server returned an unexpected response (HTTP ${response.status}). Check the server Firebase configuration.`, "client/invalid-response", response.status);
   }
   return response;
 }

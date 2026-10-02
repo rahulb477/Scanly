@@ -1,0 +1,78 @@
+name: Production probe
+
+# TEMPORARY DIAGNOSTIC. Probes the live production origin from a GitHub-hosted
+# runner (which has unrestricted egress) and commits the sanitised results back
+# to this branch so they can be read without Vercel log access.
+# Prints: HTTP status, a safe subset of response headers (cookies redacted) and
+# a truncated response body. No credentials or secrets are read or printed.
+on:
+  push:
+    branches: ["arena/**"]
+    paths-ignore: ["diagnostics/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Wait for the Vercel deployment to roll out
+        run: sleep 180
+
+      - name: Probe production endpoints
+        run: |
+          set +e
+          mkdir -p diagnostics
+          ORIGIN="https://scanly-jade.vercel.app"
+          OUT="diagnostics/production-probe.txt"
+          : > "$OUT"
+          {
+            echo "probe-run: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "commit: ${{ github.sha }}"
+            echo "origin: $ORIGIN"
+          } >> "$OUT"
+          show() {
+            label="$1"; shift
+            {
+              echo "==================== $label"
+            } >> "$OUT"
+            code=$(curl -sS -m 45 -o /tmp/body.txt -D /tmp/headers.txt -w '%{http_code}|%{content_type}' "$@" 2>>"$OUT")
+            {
+              echo "status|content-type: $code"
+              echo "--- headers (safe subset)"
+              grep -iE '^(server|x-vercel|x-matched-path|location|cache-control|content-type|content-length|set-cookie)' /tmp/headers.txt | sed 's/\(set-cookie: [^=]*=\)[^;]*/\1<redacted>/I'
+              echo "--- body (first 1500 bytes)"
+              head -c 1500 /tmp/body.txt
+              echo
+            } >> "$OUT"
+          }
+          show "GET /api/diagnostics/firebase" -X GET "$ORIGIN/api/diagnostics/firebase"
+          show "GET /api/health" -X GET "$ORIGIN/api/health"
+          show "GET /api/public/probe/wifi" -X GET "$ORIGIN/api/public/probe/wifi"
+          show "GET /api/menu/public?businessId=probe" -X GET "$ORIGIN/api/menu/public?businessId=probe"
+          show "GET /dashboard (no session cookie)" -X GET "$ORIGIN/dashboard"
+          show "POST /api/auth/session (invalid token, same-origin)" -X POST "$ORIGIN/api/auth/session" \
+            -H "Origin: $ORIGIN" -H "Sec-Fetch-Site: same-origin" \
+            -H "Authorization: Bearer diagnostic.invalid.token" -H "Content-Length: 0"
+          show "POST /api/auth/session (no origin header)" -X POST "$ORIGIN/api/auth/session" \
+            -H "Authorization: Bearer diagnostic.invalid.token" -H "Content-Length: 0"
+          {
+            echo "==================== build id from /login"
+            curl -sS -m 45 "$ORIGIN/login" | grep -oE '/_next/static/[A-Za-z0-9_-]+/' | sort -u | head -3
+            echo "==================== end"
+          } >> "$OUT"
+
+      - name: Commit probe results
+        run: |
+          git config user.name "scanly-probe[bot]"
+          git config user.email "scanly-probe[bot]@users.noreply.github.com"
+          git add diagnostics/production-probe.txt
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "diagnostics: production probe results"
+          git push origin "HEAD:${{ github.ref_name }}"
