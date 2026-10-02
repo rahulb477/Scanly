@@ -27,4 +27,14 @@ describe("bounded real Request parsing and origin validation", () => {
     expect(response.status).toBe(503);
     expect(await response.text()).not.toContain("credential details");
   });
+  it("reports Admin SDK credential/IAM failures as configuration, not a generic 500", async () => {
+    // 16 UNAUTHENTICATED and 7 PERMISSION_DENIED mean the service account or its
+    // roles are wrong, which the administrator — not the signed-in user — fixes.
+    for (const code of [7, 16]) {
+      const response = apiErrorResponse({ code, message: "Request had invalid authentication credentials." });
+      expect(response.status).toBe(503);
+      expect(await response.text()).toContain("Server Firebase configuration is incomplete");
+    }
+    expect(apiErrorResponse({ code: 5, message: "not found" }).status).toBe(500);
+  });
 });

@@ -23,8 +23,12 @@ export function apiErrorResponse(error: unknown): NextResponse {
   }
   // Never return raw SDK errors, private keys, connection strings or stack traces.
   const grpcCode = typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
-  const status = grpcCode === 14 || grpcCode === 4 ? 503 : 500;
-  return NextResponse.json({ error: status === 503 ? "Firebase is temporarily unavailable. Please try again." : "The server could not complete this request. Check Firebase configuration and service permissions.", code: "server/request-failed" }, { status });
+  // 7 PERMISSION_DENIED / 16 UNAUTHENTICATED from the Admin SDK mean the server's
+  // service-account credentials or IAM roles are wrong — a deployment problem,
+  // not a transient outage and not something the signed-in user can fix.
+  const misconfigured = grpcCode === 7 || grpcCode === 16;
+  const status = misconfigured || grpcCode === 14 || grpcCode === 4 ? 503 : 500;
+  return NextResponse.json({ error: misconfigured ? "Server Firebase configuration is incomplete. Ask the administrator to check the service-account credentials, IAM roles and redeploy." : status === 503 ? "Firebase is temporarily unavailable. Please try again." : "The server could not complete this request. Check Firebase configuration and service permissions.", code: "server/request-failed" }, { status });
 }
 
 export async function jsonBody(request: Request): Promise<unknown> {
