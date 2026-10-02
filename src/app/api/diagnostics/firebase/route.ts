@@ -119,14 +119,25 @@ export async function GET() {
     if (admin) {
       // Reports whether the configured credentials resolve and parse. Never
       // returns (or logs) a value — only the outcome and the source.
-      const resolvedCredentials = await step("credentials:resolve", report, async () => {
+      let resolvedCredentials: { clientEmail: string; privateKey: string; source: string; unwrappedJson: boolean } | undefined;
+      await step("credentials:resolve", report, async () => {
         const resolved = admin.resolveServiceAccountCredentials();
         if ("error" in resolved) throw new Error(`credential resolution failed: ${resolved.error}`);
-        // Only the shape travels on; the key itself never enters the report.
-        return { source: resolved.source, unwrappedJson: resolved.unwrappedJson, privateKey: resolved.privateKey };
+        resolvedCredentials = resolved;
+        return true;
       });
       if (resolvedCredentials) {
-        const { privateKey } = resolvedCredentials;
+        const { privateKey, clientEmail, source, unwrappedJson } = resolvedCredentials;
+        // A service account's domain is <project-id>.iam.gserviceaccount.com; the
+        // project id is public configuration, so comparing it is safe and shows
+        // whether the configured key belongs to this Firebase project.
+        const accountProject = clientEmail.split("@")[1]?.replace(/\.iam\.gserviceaccount\.com$/i, "") || null;
+        report.credentials = {
+          source,
+          unwrappedJson,
+          serviceAccountProject: accountProject,
+          serviceAccountProjectMatches: accountProject === (process.env.FIREBASE_PROJECT_ID?.trim() || null),
+        };
         await step("credentials:parse-private-key", report, async () => {
           const { createPrivateKey } = await import("node:crypto");
           createPrivateKey(privateKey);
