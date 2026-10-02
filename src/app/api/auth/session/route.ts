@@ -11,8 +11,9 @@ export async function POST(request: NextRequest) {
   try {
     assertSameOrigin(request);
     const decoded = await verifyBearerToken(request);
-    // The Web SDK creates the default profile first. Repair it server-side if a
-    // previous write was interrupted; identity is always from the verified token.
+    // Authoritative profile creation/repair. The Web SDK's users/{uid} write is a
+    // best-effort optimisation, so login never depends on client-side rules here;
+    // identity is always taken from the verified token / Auth user record.
     const ref = getAdminDb().collection("users").doc(decoded.uid);
     await getAdminDb().runTransaction(async (transaction) => {
       const current = await transaction.get(ref);

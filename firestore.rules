@@ -1,94 +1,186 @@
 rules_version = '2';
+
+// Scanly Firestore security rules.
+//
+// Schema actually used by the application (verified against src/):
+//   users/{uid}                                    - Web SDK (src/lib/firebase/profile.ts) + Admin SDK
+//   businesses/{businessId}                        - Admin SDK only (ownerId, isPublished, menuEnabled, deleting, ...)
+//   businesses/{businessId}/members/{uid}          - { uid, businessId, role: owner|admin|staff, createdAt, updatedAt }
+//   businesses/{businessId}/menuCategories/{id}    - { id, businessId, name, sortOrder, ... }
+//   businesses/{businessId}/menuItems/{id}         - { id, businessId, categoryId, name, price, available?, sortOrder, ... }
+//   businesses/{businessId}/wifiSettings/default   - guest Wi-Fi incl. wifiPassword (PRIVATE)
+//   businesses/{businessId}/reviewSettings/default
+//   businesses/{businessId}/themes/default         - appearance/theme
+//   businesses/{businessId}/socialLinks/{field}    - { businessId, platform, url }
+//   businesses/{businessId}/qrCodes/{qrId}         - { id, businessId, targetPath: "/b/{stableSlug}", ... }
+//   businesses/{businessId}/analytics/{eventId}
+//   businesses/{businessId}/activityLogs/{logId}
+//   businesses/{businessId}/reviewSessions/{id}
+//   businesses/{businessId}/_meta/{counter}        - server-only ordering counters
+//   publicBusinesses/{slug}                        - public, allowlisted projection (src/lib/data/business.ts)
+//   businessSlugs/{slug}, _rateLimits/{hash}, _health/{doc} - server-only
+//
+// The browser only ever talks to Firestore directly for users/{uid}. Every other
+// collection is written through token-verified Next.js route handlers using the
+// Firebase Admin SDK, which bypasses these rules. The read rules below are
+// therefore defence-in-depth and must still be correct and restrictive.
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function business(id) { return get(/databases/$(database)/documents/businesses/$(id)).data; }
-    function owner(id) { return signedIn() && business(id).ownerId == request.auth.uid; }
-    function member(id) {
-      return signedIn() && (owner(id) ||
-        (exists(/databases/$(database)/documents/businesses/$(id)/members/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/businesses/$(id)/members/$(request.auth.uid)).data.uid == request.auth.uid &&
-         get(/databases/$(database)/documents/businesses/$(id)/members/$(request.auth.uid)).data.businessId == id &&
-         get(/databases/$(database)/documents/businesses/$(id)/members/$(request.auth.uid)).data.role in ['admin', 'staff']));
+
+    // ---------- helpers ----------
+    function isSignedIn() { return request.auth != null; }
+    function isUser(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    function businessPath(id) { return /databases/$(database)/documents/businesses/$(id); }
+    // Never dereference a business document that may not exist: read a single
+    // field behind exists(), with an explicit fallback.
+    function businessField(id, key, fallback) {
+      return exists(businessPath(id)) ? get(businessPath(id)).data.get(key, fallback) : fallback;
     }
-    function manager(id) {
-      return owner(id) || (member(id) && get(/databases/$(database)/documents/businesses/$(id)/members/$(request.auth.uid)).data.role == 'admin');
+
+    function memberPath(id) { return /databases/$(database)/documents/businesses/$(id)/members/$(request.auth.uid); }
+    function membershipDoc(id) { return get(memberPath(id)); }  // null when absent
+    // Returns '' when there is no usable membership, so callers never read a missing document.
+    function membershipRole(id) {
+      return !isSignedIn() || membershipDoc(id) == null ? '' :
+        (membershipDoc(id).data.get('uid', '') == request.auth.uid &&
+         membershipDoc(id).data.get('businessId', '') == id
+          ? membershipDoc(id).data.get('role', '')
+          : '');
     }
-    function active(id) { return !('deleting' in business(id)) || business(id).deleting == false; }
-    function published(id) { return business(id).isPublished == true && active(id); }
-    function publicMenu(id) { return published(id) && business(id).menuEnabled == true; }
-    function timestampsOnCreate() { return request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time; }
-    function timestampsOnUpdate() { return request.resource.data.createdAt == resource.data.createdAt && request.resource.data.updatedAt == request.time; }
-    function validProfile(uid) {
+
+    function isOwner(id) {
+      return isSignedIn() && businessField(id, 'ownerId', '') == request.auth.uid;
+    }
+    // Owner, admin or staff: everyone allowed to see this business' private data.
+    function isMember(id) { return isOwner(id) || membershipRole(id) in ['owner', 'admin', 'staff']; }
+    // Owner or admin: everyone allowed to see privileged data (analytics, logs, reviews).
+    function isAdmin(id) { return isOwner(id) || membershipRole(id) in ['owner', 'admin']; }
+
+    function isActive(id) { return businessField(id, 'deleting', false) == false; }
+    // A missing business defaults to isPublished == false, so nothing public leaks.
+    function isPublished(id) { return businessField(id, 'isPublished', false) == true && isActive(id); }
+    // Public /b/{slug} menu surface.
+    function menuIsPublic(id) { return isPublished(id) && businessField(id, 'menuEnabled', false) == true; }
+
+    // ---------- users/{uid} ----------
+    // This is the ONLY path the Firebase Web SDK writes directly
+    // (src/lib/firebase/profile.ts: ensureUserProfile). It must succeed for every
+    // legitimately authenticated user, otherwise login reports permission-denied.
+    function profileShape(uid) {
       let d = request.resource.data;
       return d.keys().hasOnly(['uid', 'name', 'email', 'photoURL', 'role', 'createdAt', 'updatedAt']) &&
-        d.uid == uid && d.role == 'user' && d.name is string && d.name.size() <= 200 &&
-        d.email is string && d.email == request.auth.token.email &&
-        (d.photoURL == null || (d.photoURL is string && d.photoURL.size() <= 2048));
+        d.keys().hasAll(['uid', 'email', 'updatedAt']) &&
+        d.uid == uid &&
+        d.email is string && d.email.size() <= 320 &&
+        // Never let a profile claim an email the verified token does not carry.
+        // token.get() keeps tokens without an email claim from erroring the rule.
+        d.email.lower() == request.auth.token.get('email', '').lower() &&
+        d.get('name', '') is string && d.get('name', '').size() <= 200 &&
+        (d.get('photoURL', null) == null || (d.photoURL is string && d.photoURL.size() <= 2048)) &&
+        d.updatedAt is timestamp &&
+        d.get('createdAt', request.time) is timestamp;
     }
     match /users/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow create: if signedIn() && request.auth.uid == uid && validProfile(uid) && timestampsOnCreate();
-      allow update: if signedIn() && request.auth.uid == uid && validProfile(uid) && timestampsOnUpdate();
-      // Account deletion must be coordinated with Firebase Auth/ownership server-side.
+      allow get: if isUser(uid);
+      allow list: if false;                      // No enumerating or reading other people's profiles.
+      allow create: if isUser(uid) && profileShape(uid) && request.resource.data.get('role', 'user') == 'user';
+      allow update: if isUser(uid) && profileShape(uid) &&
+        // Role and creation time are immutable from the client: no self-escalation.
+        request.resource.data.get('role', 'user') == resource.data.get('role', 'user') &&
+        request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
+      // Account deletion is coordinated with Firebase Auth and business ownership server-side.
       allow delete: if false;
     }
+
+    // ---------- businesses ----------
     match /businesses/{id} {
-      allow read: if member(id);
+      allow get: if isMember(id);
+      allow list: if false;                      // Owner/member listings are served by the token-verified API.
       // All mutations use the token-verified API so publication, immutable identity,
       // slug reservations, settings and the public projection stay consistent.
       allow write: if false;
 
       match /members/{uid} {
-        allow read: if member(id);
-        allow create, update: if owner(id) && uid != business(id).ownerId &&
+        allow read: if isMember(id);
+        allow create, update: if isOwner(id) && uid != businessField(id, 'ownerId', '') &&
           request.resource.data.keys().hasOnly(['uid', 'businessId', 'role', 'createdAt', 'updatedAt']) &&
           request.resource.data.uid == uid && request.resource.data.businessId == id &&
           request.resource.data.role in ['admin', 'staff'] &&
-          ((resource == null && timestampsOnCreate()) || (resource != null && timestampsOnUpdate()));
-        allow delete: if owner(id) && uid != business(id).ownerId;
+          request.resource.data.updatedAt is timestamp &&
+          ((resource == null && request.resource.data.createdAt is timestamp) ||
+           (resource != null && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)));
+        allow delete: if isOwner(id) && uid != businessField(id, 'ownerId', '');
       }
+
+      // Menu: customers read the published menu of a public business, members read everything.
       match /menuCategories/{categoryId} {
-        allow read: if member(id) || publicMenu(id);
-        // CRUD uses the API to keep category cascades/counters consistent.
-        allow write: if false;
+        allow read: if isMember(id) || menuIsPublic(id);
+        allow write: if false;                   // Cascades/counters/ordering are coordinated by the API.
       }
       match /menuItems/{itemId} {
-        allow read: if member(id) || (publicMenu(id) && resource.data.available == true);
-        // Counters, category references/cascades and ordering are coordinated by the API.
-        allow write: if false;
+        allow read: if isMember(id) || (menuIsPublic(id) && resource.data.get('available', false) == true);
+        allow write: if false;                   // Create/update/delete/reorder/hide go through the API.
       }
+
+      // Guest Wi-Fi holds wifiPassword: never public. The opt-in public projection
+      // lives in publicBusinesses and the /api/public/{slug}/wifi route.
       match /wifiSettings/{settingId} {
-        allow read: if member(id);
-        allow write: if false; // Consent + credentials + public projection are updated by the API together.
+        allow read: if isMember(id);
+        allow write: if false;
       }
       match /reviewSettings/{settingId} {
-        allow read: if member(id);
+        allow read: if isMember(id);
         allow write: if false;
       }
+      // Social links: public users may read the enabled links of a published business.
       match /socialLinks/{socialId} {
-        allow read: if member(id);
+        allow read: if isMember(id) || (isPublished(id) && resource.data.get('url', null) != null);
         allow write: if false;
       }
+      // Appearance/theme of a published business is public.
       match /themes/{themeId} {
-        allow read: if member(id);
+        allow read: if isMember(id) || isPublished(id);
         allow write: if false;
       }
+      // QR destination data for /b/{slug}; the slug/targetPath is immutable and server-created.
       match /qrCodes/{qrId} {
-        allow read: if member(id);
-        allow write: if false; // Slug/QR target are immutable, created server-side.
+        allow read: if isMember(id) || isPublished(id);
+        allow write: if false;
       }
-      match /analytics/{eventId} { allow read: if member(id); allow write: if false; }
-      match /activityLogs/{logId} { allow read: if member(id); allow write: if false; }
-      match /reviewSessions/{sessionId} { allow read: if manager(id); allow write: if false; }
+
+      // Private business data: owners/admins only, never customers, never staff.
+      match /analytics/{eventId} {
+        allow read: if isAdmin(id);
+        // Anonymous event tracking is accepted only by POST /api/track, which
+        // rate-limits and normalises the event. Clients may not write here at all,
+        // so analytics cannot be forged, updated or deleted from a browser.
+        allow write: if false;
+      }
+      match /activityLogs/{logId} {
+        allow read: if isAdmin(id);
+        allow write: if false;
+      }
+      match /reviewSessions/{sessionId} {
+        // The anonymous AI review flow (draft, copy, Google redirect) runs entirely
+        // through POST /api/ai/review and never needs a Firebase account.
+        allow read: if isAdmin(id);
+        allow write: if false;
+      }
+
+      // Server-only ordering counters and anything added later under a business.
+      match /{document=**} { allow read, write: if false; }
     }
+
+    // ---------- public customer page: /b/{slug} ----------
     match /publicBusinesses/{slug} {
-      // No listing/scraping, no private fields, no client publishing authority.
-      allow get: if published(resource.data.businessId) && resource.data.slug == slug &&
+      // Allowlisted projection only (no ownerId, no wifiPassword, no timestamps).
+      allow get: if isPublished(resource.data.businessId) && resource.data.slug == slug &&
         resource.data.keys().hasOnly(['id', 'businessId', 'businessName', 'slug', 'logo', 'coverImage', 'category', 'description', 'phone', 'email', 'address', 'city', 'state', 'pincode', 'googleMapsUrl', 'menuEnabled', 'isPublished', 'googleReviewUrl', 'googlePlaceId', 'reviewEnabled', 'aiReviewEnabled', 'websiteUrl', 'instagramUrl', 'facebookUrl', 'youtubeUrl', 'whatsappUrl', 'twitterUrl', 'theme', 'primaryColor', 'secondaryColor', 'backgroundColor', 'font', 'tagline', 'cardStyle', 'buttonStyle', 'wifiEnabled', 'wifiName', 'wifiSecurity']);
-      allow list, write: if false;
+      allow list, write: if false;               // No scraping, no client publishing authority.
     }
-    // Includes businessSlugs, _meta counters, rate limits, legacy top-level names
+
+    // Includes businessSlugs, _rateLimits, _health, legacy top-level collections
     // and anything newly added: no permissive fallback.
     match /{document=**} { allow read, write: if false; }
   }

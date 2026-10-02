@@ -34,8 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const googleEnabled = process.env.NEXT_PUBLIC_FIREBASE_GOOGLE_ENABLED === "true";
 
   const synchronize = useCallback(async (current: User) => {
-    await ensureUserProfile(current);
+    // The token-verified server route is authoritative: it creates or repairs
+    // users/{uid} with the Admin SDK and issues the httpOnly SSR cookie. The
+    // direct Firestore sync afterwards only refreshes the client-owned fields and
+    // is tolerated to fail when the deployed rules are stale.
     await requestJson("/api/auth/session", { method: "POST", headers: { Authorization: `Bearer ${await current.getIdToken()}` } });
+    await ensureUserProfile(current);
   }, []);
 
   useEffect(() => {
