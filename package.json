@@ -13,6 +13,8 @@
     "test:e2e": "node scripts/firebase-emulators.mjs e2e",
     "test:all": "node scripts/firebase-emulators.mjs all",
     "dev:emulators": "node scripts/firebase-emulators.mjs dev",
+    "check:firebase-env": "node scripts/check-firebase-env.mjs",
+    "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes,storage --project ${FIREBASE_PROJECT_ID:?set FIREBASE_PROJECT_ID to the live Firebase project}",
     "migrate:export": "node --conditions=react-server --import tsx scripts/export-postgres.ts",
     "migrate:import": "node --conditions=react-server --import tsx scripts/import-firestore.ts"
   },

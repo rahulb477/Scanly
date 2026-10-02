@@ -1,31 +1,56 @@
 rules_version = '2';
+
+// Scanly Firebase Storage rules.
+// Only three folders exist: businesses/{businessId}/{logos|covers|menu}/{fileName}
+// (src/lib/firebase/storage.ts). Everything else is denied.
 service firebase.storage {
   match /b/{bucket}/o {
-    function business(id) { return firestore.get(/databases/(default)/documents/businesses/$(id)).data; }
-    function member(id) {
-      return request.auth != null && (business(id).ownerId == request.auth.uid ||
-        (firestore.exists(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)) &&
-         firestore.get(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)).data.uid == request.auth.uid &&
-         firestore.get(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)).data.businessId == id &&
-         firestore.get(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)).data.role in ['admin', 'staff']));
+
+    function isSignedIn() { return request.auth != null; }
+
+    function businessPath(id) { return /databases/(default)/documents/businesses/$(id); }
+    // Never dereference a business document that may not exist.
+    function businessField(id, key, fallback) {
+      return firestore.exists(businessPath(id)) ? firestore.get(businessPath(id)).data.get(key, fallback) : fallback;
     }
-    function manager(id) {
-      return request.auth != null && (business(id).ownerId == request.auth.uid ||
-        (member(id) && firestore.get(/databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid)).data.role == 'admin'));
+
+    function memberPath(id) { return /databases/(default)/documents/businesses/$(id)/members/$(request.auth.uid); }
+    function membershipDoc(id) { return firestore.get(memberPath(id)); }
+    function membershipRole(id) {
+      return !isSignedIn() || membershipDoc(id) == null ? '' :
+        (membershipDoc(id).data.get('uid', '') == request.auth.uid &&
+         membershipDoc(id).data.get('businessId', '') == id
+          ? membershipDoc(id).data.get('role', '')
+          : '');
     }
-    function active(id) { return !('deleting' in business(id)) || business(id).deleting == false; }
-    function image() {
-      return request.resource != null && request.resource.size > 0 && request.resource.size <= 5 * 1024 * 1024 &&
+
+    function isOwner(id) { return isSignedIn() && businessField(id, 'ownerId', '') == request.auth.uid; }
+    function isMember(id) { return isOwner(id) || membershipRole(id) in ['owner', 'admin', 'staff']; }
+    function isAdmin(id) { return isOwner(id) || membershipRole(id) in ['owner', 'admin']; }
+
+    function isActive(id) { return businessField(id, 'deleting', false) == false; }
+    function isPublished(id) { return businessField(id, 'isPublished', false) == true && isActive(id); }
+
+    function isBoundedImage() {
+      return request.resource != null &&
+        request.resource.size > 0 && request.resource.size <= 5 * 1024 * 1024 &&
         request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
     }
+
     match /businesses/{id}/{kind}/{fileName} {
-      // These folders contain intentionally public branding/menu images only.
-      allow read: if kind in ['logos', 'covers', 'menu'] && (member(id) || (business(id).isPublished == true && active(id)));
-      allow create, update: if kind in ['logos', 'covers', 'menu'] && active(id) &&
-        ((kind == 'menu' && member(id)) || (kind in ['logos', 'covers'] && manager(id))) &&
-        fileName.matches('^[A-Za-z0-9_-]+\\.(jpg|png|webp)$') && image();
-      allow delete: if active(id) && ((kind == 'menu' && member(id)) || (kind in ['logos', 'covers'] && manager(id)));
+      // These folders hold intentionally public branding/menu images only.
+      allow read: if kind in ['logos', 'covers', 'menu'] && (isMember(id) || isPublished(id));
+
+      // Authenticated + membership/ownership + file type + size are all validated.
+      allow create, update: if kind in ['logos', 'covers', 'menu'] && isActive(id) &&
+        ((kind == 'menu' && isMember(id)) || (kind in ['logos', 'covers'] && isAdmin(id))) &&
+        fileName.matches('^[A-Za-z0-9_-]+\\.(jpg|png|webp)$') && isBoundedImage();
+
+      allow delete: if kind in ['logos', 'covers', 'menu'] && isActive(id) &&
+        ((kind == 'menu' && isMember(id)) || (kind in ['logos', 'covers'] && isAdmin(id)));
     }
+
+    // Never a public bucket: no reads and no writes anywhere else.
     match /{allPaths=**} { allow read, write: if false; }
   }
 }
