@@ -1,5 +1,7 @@
 # Production login failure: root cause and fix
 
+> **Security review update (2026-10-02, 18:44 UTC):** The live production diagnostic returned successful Google token exchange, Firebase Auth `listUsers`, and Firestore read checks. This confirms the credential currently deployed in production is operational; it does **not** prove that the previously exposed key has been revoked in Google IAM. The temporary unauthenticated diagnostic endpoint and its write-enabled probe workflow have since been removed. Measurements and instructions below are historical.
+
 Target: `https://scanly-jade.vercel.app` (project `restaurant-flow-59183`).
 
 ## 1. Symptom
