@@ -99,7 +99,11 @@ export async function GET() {
     },
     clientEmail: {
       present: present("FIREBASE_CLIENT_EMAIL"),
-      isServiceAccount: (process.env.FIREBASE_CLIENT_EMAIL || "").trim().endsWith(".iam.gserviceaccount.com"),
+      isServiceAccount: /^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/i.test((process.env.FIREBASE_CLIENT_EMAIL || "").trim().replace(/^["']|["']$/g, "")),
+      length: (process.env.FIREBASE_CLIENT_EMAIL || "").trim().length,
+      hasAtSign: (process.env.FIREBASE_CLIENT_EMAIL || "").includes("@"),
+      wrappedInQuotes: /^["'].*["']$/.test((process.env.FIREBASE_CLIENT_EMAIL || "").trim()),
+      looksLikeJson: (process.env.FIREBASE_CLIENT_EMAIL || "").trim().startsWith("{"),
     },
     privateKey: privateKeyShape(),
   };
@@ -113,6 +117,23 @@ export async function GET() {
   if (appModule) {
     const admin = await import("@/lib/firebase/admin").catch(() => undefined);
     if (admin) {
+      // Reports whether the configured credentials resolve and parse. Never
+      // returns (or logs) a value — only the outcome and the source.
+      const resolvedCredentials = await step("credentials:resolve", report, async () => {
+        const resolved = admin.resolveServiceAccountCredentials();
+        if ("error" in resolved) throw new Error(`credential resolution failed: ${resolved.error}`);
+        // Only the shape travels on; the key itself never enters the report.
+        return { source: resolved.source, unwrappedJson: resolved.unwrappedJson, privateKey: resolved.privateKey };
+      });
+      if (resolvedCredentials) {
+        const { privateKey } = resolvedCredentials;
+        await step("credentials:parse-private-key", report, async () => {
+          const { createPrivateKey } = await import("node:crypto");
+          createPrivateKey(privateKey);
+          return true;
+        });
+      }
+
       const app = await step("admin:getFirebaseAdminApp", report, async () => admin.getFirebaseAdminApp());
       if (app) {
         await step("admin:getAdminAuth", report, async () => admin.getAdminAuth());

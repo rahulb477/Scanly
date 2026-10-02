@@ -1,6 +1,17 @@
-probe-run: 2026-10-02T17:01:19Z
-commit: 6248328a03da4157f4008efb6b232bbdc93f013a
+probe-run: 2026-10-02T17:17:58Z
+commit: 10d02db9f073a6ac8b6d3a3fd40555b3f92fda63
 origin: https://scanly-jade.vercel.app
+==================== GET /api/diagnostics/firebase
+status|content-type: 200|application/json
+--- headers (safe subset)
+cache-control: no-store
+content-type: application/json
+server: Vercel
+x-matched-path: /api/diagnostics/firebase
+x-vercel-cache: MISS
+x-vercel-id: cle1::iad1::gvbxt-1790961478624-ace931464947
+--- body (first 1500 bytes)
+{"generatedAt":"2026-10-02T17:17:58.952Z","runtime":"nodejs","node":"v24.21.0","vercel":true,"vercelEnv":"production","emulatorHosts":{"auth":null,"firestore":null},"environment":{"NEXT_PUBLIC_FIREBASE_API_KEY":true,"NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN":true,"NEXT_PUBLIC_FIREBASE_PROJECT_ID":true,"NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET":true,"NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID":true,"NEXT_PUBLIC_FIREBASE_APP_ID":true,"NEXT_PUBLIC_APP_URL":true,"FIREBASE_PROJECT_ID":true,"FIREBASE_CLIENT_EMAIL":true,"FIREBASE_PRIVATE_KEY":true,"FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS":false},"project":{"adminProjectId":"restaurant-flow-59183","webProjectId":"restaurant-flow-59183","match":true},"clientEmail":{"present":true,"isServiceAccount":false},"privateKey":{"present":true,"length":2402,"hasPemHeader":true,"hasPemFooter":true,"hasEscapedNewlines":true,"hasRealNewlines":true,"wrappedInQuotes":false,"looksLikeJson":true},"import:firebase-admin/app":{"status":"ok","ms":87},"import:firebase-admin/auth":{"status":"failed","ms":104,"name":"Error","message":"Failed to load external module firebase-admin-a14c8a5423a75469/auth: Error [ERR_REQUIRE_ESM]: require() of ES Module /var/task/node_modules/jose/dist/webapi/index.js from /var/task/node_modules/jwks-rsa/src/utils.js not supported.\nInstead change the require of index.js in /var/task/node_modules/jwks-rsa/src/utils.js to a dynamic import() which is available in all CommonJS modules."},"import:firebase-admin/firestore":{"status":"ok","ms"
 ==================== GET /api/health
 status|content-type: 500|
 --- headers (safe subset)
@@ -8,7 +19,7 @@ cache-control: public, max-age=0, must-revalidate
 server: Vercel
 x-matched-path: /api/health
 x-vercel-cache: MISS
-x-vercel-id: iad1::iad1::swq2f-1790960479867-cfdafebc1775
+x-vercel-id: cle1::iad1::88wdr-1790961479860-af8b5b945d6c
 content-length: 0
 --- body (first 1500 bytes)
 
@@ -19,7 +30,7 @@ cache-control: public, max-age=0, must-revalidate
 server: Vercel
 x-matched-path: /api/public/[slug]/wifi
 x-vercel-cache: MISS
-x-vercel-id: iad1::iad1::5zrwh-1790960479940-1cd786271c61
+x-vercel-id: cle1::iad1::v957b-1790961481449-2e1072396769
 content-length: 0
 --- body (first 1500 bytes)
 
@@ -30,7 +41,7 @@ cache-control: public, max-age=0, must-revalidate
 server: Vercel
 x-matched-path: /api/menu/public
 x-vercel-cache: MISS
-x-vercel-id: iad1::iad1::bgmqg-1790960480018-ba046530941e
+x-vercel-id: cle1::iad1::bhgl9-1790961481625-e9a64f84f8c4
 content-length: 0
 --- body (first 1500 bytes)
 
@@ -42,10 +53,10 @@ content-type: text/html; charset=utf-8
 server: Vercel
 x-matched-path: /500
 x-vercel-cache: MISS
-x-vercel-id: iad1::9xl52-1790960480181-daf22bebac49
+x-vercel-id: cle1::dwsg8-1790961481836-9a435fc14026
 content-length: 8993
 --- body (first 1500 bytes)
-<!DOCTYPE html><html id="__next_error__"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/immutable/chunks/1mlftcslf095m.js"/><script src="/_next/static/immutable/chunks/0ws7t_wz4dvp7.js" async=""></script><script src="/_next/static/immutable/chunks/2o-z0q3llz5d0.js" async=""></script><script src="/_next/static/immutable/chunks/1vnwmvn44pzp2.js" async=""></script><script src="/_next/static/immutable/chunks/turbopack-3ih6uf_wf0c8w.js" async=""></script><script src="/_next/static/immutable/chunks/2corl6wyj4669.js" async=""></script><meta name="next-size-adjust" content=""/><title>500: This page couldn’t load</title><style>:root {--next-error-bg: #fff;--next-error-text: #171717;--next-error-title: #171717;--next-error-message: #171717;--next-error-digest: #666666;--next-error-btn-text: #fff;--next-error-btn-bg: #171717;--next-error-btn-border: none;--next-error-btn-secondary-text: #171717;--next-error-btn-secondary-bg: transparent;--next-error-btn-secondary-border: 1px solid rgba(0,0,0,0.08);}@media (prefers-color-scheme: dark) {:root {--next-error-bg: #0a0a0a;--next-error-text: #ededed;--next-error-title: #ededed;--next-error-message: #ededed;--next-error-digest: #a0a0a0;--next-error-btn-text: #0a0a0a;--next-error-btn-bg: #ededed;--next-error-btn-border: none;--next-error-btn-secondary-text: #ededed;--next-error-btn-secondary-bg: transparent;--next-error-bt
+<!DOCTYPE html><html id="__next_error__"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/immutable/chunks/1mlftcslf095m.js"/><script src="/_next/static/immutable/chunks/0ws7t_wz4dvp7.js" async=""></script><script src="/_next/static/immutable/chunks/3a5zqdash7tdt.js" async=""></script><script src="/_next/static/immutable/chunks/1vnwmvn44pzp2.js" async=""></script><script src="/_next/static/immutable/chunks/turbopack-10tlh5ryimaet.js" async=""></script><script src="/_next/static/immutable/chunks/2corl6wyj4669.js" async=""></script><meta name="next-size-adjust" content=""/><title>500: This page couldn’t load</title><style>:root {--next-error-bg: #fff;--next-error-text: #171717;--next-error-title: #171717;--next-error-message: #171717;--next-error-digest: #666666;--next-error-btn-text: #fff;--next-error-btn-bg: #171717;--next-error-btn-border: none;--next-error-btn-secondary-text: #171717;--next-error-btn-secondary-bg: transparent;--next-error-btn-secondary-border: 1px solid rgba(0,0,0,0.08);}@media (prefers-color-scheme: dark) {:root {--next-error-bg: #0a0a0a;--next-error-text: #ededed;--next-error-title: #ededed;--next-error-message: #ededed;--next-error-digest: #a0a0a0;--next-error-btn-text: #0a0a0a;--next-error-btn-bg: #ededed;--next-error-btn-border: none;--next-error-btn-secondary-text: #ededed;--next-error-btn-secondary-bg: transparent;--next-error-bt
 ==================== POST /api/auth/session (invalid token, same-origin)
 status|content-type: 500|
 --- headers (safe subset)
@@ -53,7 +64,7 @@ cache-control: public, max-age=0, must-revalidate
 server: Vercel
 x-matched-path: /api/auth/session
 x-vercel-cache: MISS
-x-vercel-id: iad1::iad1::f4bqm-1790960481657-6e476bba7211
+x-vercel-id: cle1::iad1::p8lf7-1790961483688-14c23d97d4a5
 content-length: 0
 --- body (first 1500 bytes)
 
@@ -64,7 +75,7 @@ cache-control: public, max-age=0, must-revalidate
 server: Vercel
 x-matched-path: /api/auth/session
 x-vercel-cache: MISS
-x-vercel-id: iad1::iad1::84vg2-1790960481797-58e7228efa1d
+x-vercel-id: cle1::iad1::vnbl4-1790961483858-aaf825987e94
 content-length: 0
 --- body (first 1500 bytes)
 

@@ -33,6 +33,70 @@ export function normalizePrivateKey(raw: string): string {
   return key;
 }
 
+function stripWrappingQuotes(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length >= 2 && ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || (trimmed.startsWith("'") && trimmed.endsWith("'")))) return trimmed.slice(1, -1).trim();
+  return trimmed;
+}
+
+function isServiceAccountEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/i.test(stripWrappingQuotes(value));
+}
+
+/** Recognises the common dashboard mistake of pasting the whole service-account JSON into FIREBASE_PRIVATE_KEY. */
+function parseServiceAccountJson(value: string): Record<string, unknown> | undefined {
+  const text = stripWrappingQuotes(value);
+  if (!text.startsWith("{")) return undefined;
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export type ServiceAccountCredentials = { clientEmail: string; privateKey: string; source: "environment" | "service-account-json"; unwrappedJson: boolean };
+export type CredentialResolution = ServiceAccountCredentials | { error: "missing" | "missing-client-email" | "missing-private-key" };
+
+/**
+ * Reads the Firebase Admin service-account credentials from the environment.
+ *
+ * Tolerates the two Vercel dashboard mistakes that otherwise surface only as an
+ * opaque "invalid PEM" / "invalid credential" failure:
+ *  - FIREBASE_PRIVATE_KEY containing the whole service-account JSON instead of
+ *    just the `private_key` PEM (the PEM is extracted from it), and
+ *  - FIREBASE_CLIENT_EMAIL that is not the service-account address, when the
+ *    service-account JSON provides the real `client_email`.
+ *
+ * Only safe booleans are logged; no value is ever written to a log or response.
+ */
+export function resolveServiceAccountCredentials(): CredentialResolution {
+  const rawEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const rawKey = process.env.FIREBASE_PRIVATE_KEY?.trim();
+  if (!rawEmail && !rawKey) return { error: "missing" };
+
+  let clientEmail = rawEmail ? stripWrappingQuotes(rawEmail) : "";
+  let privateKey = rawKey ? normalizePrivateKey(rawKey) : "";
+  let unwrappedJson = false;
+
+  const json = rawKey ? parseServiceAccountJson(rawKey) : undefined;
+  if (json) {
+    unwrappedJson = true;
+    if (typeof json.private_key === "string" && json.private_key.includes("-----BEGIN PRIVATE KEY-----")) {
+      privateKey = normalizePrivateKey(json.private_key);
+      serverLog("admin", "private-key-json-unwrapped", { reason: "FIREBASE_PRIVATE_KEY holds a service-account JSON object; extracted its private_key" });
+    }
+    if (!isServiceAccountEmail(clientEmail) && typeof json.client_email === "string" && isServiceAccountEmail(json.client_email)) {
+      clientEmail = stripWrappingQuotes(json.client_email);
+      serverLog("admin", "client-email-json-fallback", { reason: "FIREBASE_CLIENT_EMAIL is not a service-account address; using client_email from the service-account JSON" });
+    }
+  }
+
+  if (!clientEmail) return { error: rawKey ? "missing-client-email" : "missing" };
+  if (!privateKey) return { error: "missing-private-key" };
+  return { clientEmail, privateKey, source: unwrappedJson ? "service-account-json" : "environment", unwrappedJson };
+}
+
 function assertUsablePrivateKey(privateKey: string): void {
   if (!privateKey.includes("-----BEGIN PRIVATE KEY-----") || !privateKey.includes("-----END PRIVATE KEY-----")) {
     serverLog("admin", "invalid-private-key", { reason: "missing PEM header/footer" });
@@ -75,37 +139,40 @@ export function getFirebaseAdminApp(): App {
     return initializeApp({ projectId: adminProject, storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }, FIREBASE_ADMIN_APP_NAME);
   }
 
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
-  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
-  const privateKey = rawPrivateKey ? normalizePrivateKey(rawPrivateKey) : undefined;
+  const rawEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY?.trim();
+  if (!rawEmail && !rawPrivateKey) {
+    if (process.env.FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS === "true") {
+      return initializeApp({ projectId: adminProject, credential: applicationDefault(), storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }, FIREBASE_ADMIN_APP_NAME);
+    }
+    serverLog("admin", "configuration-missing", { missing: "FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY" });
+    throw new FirebaseConfigurationError("Server Firebase configuration missing: FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY (or Application Default Credentials). Configure secure server variables and redeploy.");
+  }
 
-  if (Boolean(clientEmail) !== Boolean(privateKey)) {
-    serverLog("admin", "configuration-missing", { hasClientEmail: Boolean(clientEmail), hasPrivateKey: Boolean(privateKey) });
+  if (Boolean(rawEmail) !== Boolean(rawPrivateKey)) {
+    serverLog("admin", "configuration-missing", { hasClientEmail: Boolean(rawEmail), hasPrivateKey: Boolean(rawPrivateKey) });
     throw new FirebaseConfigurationError("Server Firebase configuration missing: set both FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY, or use Application Default Credentials.");
   }
 
-  if (clientEmail && privateKey) {
-    if (!clientEmail.endsWith(".iam.gserviceaccount.com")) {
-      serverLog("admin", "invalid-client-email", { reason: "not a service account address" });
-      throw new FirebaseConfigurationError("Invalid Firebase Admin credentials. FIREBASE_CLIENT_EMAIL must be the service account's client_email, not a personal email address.");
-    }
-    assertUsablePrivateKey(privateKey);
-    try {
-      const app = initializeApp({ projectId: adminProject, credential: cert({ projectId: adminProject, clientEmail, privateKey }), storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }, FIREBASE_ADMIN_APP_NAME);
-      serverLog("admin", "initialized", { app: FIREBASE_ADMIN_APP_NAME, adminProject });
-      return app;
-    } catch (error) {
-      logServerError("admin", "initializeApp", error, { adminProject });
-      throw new FirebaseConfigurationError("Firebase Admin could not be initialized with the configured credentials. Check FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY and redeploy.");
-    }
+  const credentials = resolveServiceAccountCredentials();
+  if ("error" in credentials) {
+    serverLog("admin", "configuration-missing", { reason: credentials.error });
+    throw new FirebaseConfigurationError("Server Firebase configuration missing: set both FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY, or use Application Default Credentials.");
   }
-
-  if (process.env.FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS === "true") {
-    return initializeApp({ projectId: adminProject, credential: applicationDefault(), storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }, FIREBASE_ADMIN_APP_NAME);
+  const { clientEmail, privateKey, source, unwrappedJson } = credentials;
+  if (!isServiceAccountEmail(clientEmail)) {
+    serverLog("admin", "invalid-client-email", { reason: "not a service account address", source });
+    throw new FirebaseConfigurationError("Invalid Firebase Admin credentials. FIREBASE_CLIENT_EMAIL must be the service account's client_email (…@<project>.iam.gserviceaccount.com), not a personal email address.");
   }
-
-  serverLog("admin", "configuration-missing", { missing: "FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY" });
-  throw new FirebaseConfigurationError("Server Firebase configuration missing: FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY (or Application Default Credentials). Configure secure server variables and redeploy.");
+  assertUsablePrivateKey(privateKey);
+  try {
+    const app = initializeApp({ projectId: adminProject, credential: cert({ projectId: adminProject, clientEmail, privateKey }), storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }, FIREBASE_ADMIN_APP_NAME);
+    serverLog("admin", "initialized", { app: FIREBASE_ADMIN_APP_NAME, adminProject, source, unwrappedJson });
+    return app;
+  } catch (error) {
+    logServerError("admin", "initializeApp", error, { adminProject });
+    throw new FirebaseConfigurationError("Firebase Admin could not be initialized with the configured credentials. Check FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY and redeploy.");
+  }
 }
 
 export function getAdminAuth() { return getAuth(getFirebaseAdminApp()); }
