@@ -1,5 +1,5 @@
-probe-run: 2026-10-02T17:39:48Z
-commit: 02a33d36b8a7ca6b3583143a5ca76572feaa552a
+probe-run: 2026-10-02T17:46:01Z
+commit: 09e3fec318b0a3b54dcf7ab0399b64c1b9c03068
 origin: https://scanly-jade.vercel.app
 ==================== GET /api/diagnostics/firebase
 status|content-type: 200|application/json
@@ -9,9 +9,9 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/diagnostics/firebase
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::kfkgh-1790962788485-c4981d4e8bc4
+x-vercel-id: sfo1::iad1::5pk4k-1790963161283-437dbc96c7e9
 --- body (first 1500 bytes)
-{"generatedAt":"2026-10-02T17:39:48.809Z","runtime":"nodejs","node":"v24.21.0","vercel":true,"vercelEnv":"production","emulatorHosts":{"auth":null,"firestore":null},"environment":{"NEXT_PUBLIC_FIREBASE_API_KEY":true,"NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN":true,"NEXT_PUBLIC_FIREBASE_PROJECT_ID":true,"NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET":true,"NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID":true,"NEXT_PUBLIC_FIREBASE_APP_ID":true,"NEXT_PUBLIC_APP_URL":true,"FIREBASE_PROJECT_ID":true,"FIREBASE_CLIENT_EMAIL":true,"FIREBASE_PRIVATE_KEY":true,"FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS":false},"project":{"adminProjectId":"restaurant-flow-59183","webProjectId":"restaurant-flow-59183","match":true},"clientEmail":{"present":true,"isServiceAccount":false,"length":28,"hasAtSign":true,"wrappedInQuotes":false,"looksLikeJson":false},"privateKey":{"present":true,"length":2402,"hasPemHeader":true,"hasPemFooter":true,"hasEscapedNewlines":true,"hasRealNewlines":true,"wrappedInQuotes":false,"looksLikeJson":true},"import:firebase-admin/app":{"status":"ok","ms":66},"import:firebase-admin/auth":{"status":"ok","ms":131},"import:firebase-admin/firestore":{"status":"ok","ms":330},"import:firebase-admin/storage":{"status":"ok","ms":5},"import:@/lib/firebase/admin":{"status":"ok","ms":1},"credentials:resolve":{"status":"ok","ms":1},"credentials:parse-private-key":{"status":"ok","ms":1},"admin:getFirebaseAdminApp":{"status":"ok","ms":1},"admin:getAdminAuth":{"status":"ok","ms":1},"admin:getAdminDb":{"status":"ok
+{"generatedAt":"2026-10-02T17:46:01.660Z","runtime":"nodejs","node":"v24.21.0","vercel":true,"vercelEnv":"production","emulatorHosts":{"auth":null,"firestore":null},"environment":{"NEXT_PUBLIC_FIREBASE_API_KEY":true,"NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN":true,"NEXT_PUBLIC_FIREBASE_PROJECT_ID":true,"NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET":true,"NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID":true,"NEXT_PUBLIC_FIREBASE_APP_ID":true,"NEXT_PUBLIC_APP_URL":true,"FIREBASE_PROJECT_ID":true,"FIREBASE_CLIENT_EMAIL":true,"FIREBASE_PRIVATE_KEY":true,"FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS":false},"project":{"adminProjectId":"restaurant-flow-59183","webProjectId":"restaurant-flow-59183","match":true},"clientEmail":{"present":true,"isServiceAccount":false,"length":28,"hasAtSign":true,"wrappedInQuotes":false,"looksLikeJson":false},"privateKey":{"present":true,"length":2402,"hasPemHeader":true,"hasPemFooter":true,"hasEscapedNewlines":true,"hasRealNewlines":true,"wrappedInQuotes":false,"looksLikeJson":true},"import:firebase-admin/app":{"status":"ok","ms":83},"import:firebase-admin/auth":{"status":"ok","ms":151},"import:firebase-admin/firestore":{"status":"ok","ms":522},"import:firebase-admin/storage":{"status":"ok","ms":6},"import:@/lib/firebase/admin":{"status":"ok","ms":2},"credentials:resolve":{"status":"ok","ms":2},"credentials":{"source":"service-account-json","unwrappedJson":true,"serviceAccountProject":"restaurant-flow-59183","serviceAccountProjectMatches":true},"credentials:parse-private-ke
 ==================== GET /api/health
 status|content-type: 500|application/json
 --- headers (safe subset)
@@ -20,7 +20,7 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/health
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::5cg85-1790962791620-f25f7abbab0a
+x-vercel-id: sfo1::iad1::jjbtg-1790963164649-1b1c75130c55
 --- body (first 1500 bytes)
 {"error":"The server could not complete this request. Check Firebase configuration and service permissions.","code":"server/request-failed"}
 ==================== GET /api/public/probe/wifi
@@ -31,7 +31,7 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/public/[slug]/wifi
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::gg2dk-1790962792234-cd1386f7cb14
+x-vercel-id: sfo1::iad1::2ldvb-1790963169023-bbb3b3f425b5
 --- body (first 1500 bytes)
 {"error":"The server could not complete this request. Check Firebase configuration and service permissions.","code":"server/request-failed"}
 ==================== GET /api/menu/public?businessId=probe
@@ -42,7 +42,7 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/menu/public
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::s95rt-1790962793737-60b58a1ce526
+x-vercel-id: sfo1::iad1::z5k2k-1790963169586-156a1234a060
 --- body (first 1500 bytes)
 {"error":"The server could not complete this request. Check Firebase configuration and service permissions.","code":"server/request-failed"}
 ==================== GET /dashboard (no session cookie)
@@ -54,9 +54,9 @@ location: /login
 server: Vercel
 x-matched-path: /admin
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::xx8rc-1790962794330-97b17c68c9f4
+x-vercel-id: sfo1::iad1::626m4-1790963171178-6ba96c54055e
 --- body (first 1500 bytes)
-<!DOCTYPE html><html id="__next_error__"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/immutable/chunks/1mlftcslf095m.js"/><script src="/_next/static/immutable/chunks/0ws7t_wz4dvp7.js" async=""></script><script src="/_next/static/immutable/chunks/3v7_sx9563g_o.js" async=""></script><script src="/_next/static/immutable/chunks/1vnwmvn44pzp2.js" async=""></script><script src="/_next/static/immutable/chunks/turbopack-1vzca7eotqvir.js" async=""></script><title>Scanly — QR Customer Engagement SaaS</title><meta name="description" content="Collect genuine customer feedback, generate AI-assisted review drafts, share digital menus, Wi-Fi and social links through a single QR code."/><script src="/_next/static/immutable/chunks/0c0hxoamwjsbw.js" noModule=""></script></head><body><div hidden=""><!--$--><!--/$--></div><script src="/_next/static/immutable/chunks/1mlftcslf095m.js" id="_R_" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0])</script><script>self.__next_f.push([1,"1:\"$Sreact.fragment\"\n2:I[2594,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/3j4-3_4obikph.js\"],\"AuthProvider\"]\n3:I[88840,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/3j4-3_4obikph.js\"],\
+<!DOCTYPE html><html id="__next_error__"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/immutable/chunks/1mlftcslf095m.js"/><script src="/_next/static/immutable/chunks/0ws7t_wz4dvp7.js" async=""></script><script src="/_next/static/immutable/chunks/0ow4jyae-5hva.js" async=""></script><script src="/_next/static/immutable/chunks/1vnwmvn44pzp2.js" async=""></script><script src="/_next/static/immutable/chunks/turbopack-1f3xzv7_4zsbp.js" async=""></script><title>Scanly — QR Customer Engagement SaaS</title><meta name="description" content="Collect genuine customer feedback, generate AI-assisted review drafts, share digital menus, Wi-Fi and social links through a single QR code."/><script src="/_next/static/immutable/chunks/0c0hxoamwjsbw.js" noModule=""></script></head><body><div hidden=""><!--$--><!--/$--></div><script src="/_next/static/immutable/chunks/1mlftcslf095m.js" id="_R_" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0])</script><script>self.__next_f.push([1,"1:\"$Sreact.fragment\"\n2:I[2594,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/3j4-3_4obikph.js\"],\"AuthProvider\"]\n3:I[88840,[\"/_next/static/immutable/chunks/24-dsc41n7t6q.js\",\"/_next/static/immutable/chunks/2-1dhywnb9nla.js\",\"/_next/static/immutable/chunks/3j4-3_4obikph.js\"],\
 ==================== POST /api/auth/session (invalid token, same-origin)
 status|content-type: 401|application/json
 --- headers (safe subset)
@@ -65,7 +65,7 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/auth/session
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::sblf4-1790962795741-83cd970086bf
+x-vercel-id: sfo1::iad1::xrwd5-1790963172644-5c5f1aad5a50
 --- body (first 1500 bytes)
 {"error":"Authentication session could not be verified.","code":"auth/user-token-expired"}
 ==================== POST /api/auth/session (no origin header)
@@ -76,7 +76,7 @@ content-type: application/json
 server: Vercel
 x-matched-path: /api/auth/session
 x-vercel-cache: MISS
-x-vercel-id: sfo1::iad1::qc6k8-1790962795964-dc73ea8a26c3
+x-vercel-id: sfo1::iad1::x67ws-1790963172871-a4a93c16082a
 --- body (first 1500 bytes)
 {"error":"Cross-origin session requests are not allowed.","code":"request/cross-origin"}
 ==================== build id from /login
