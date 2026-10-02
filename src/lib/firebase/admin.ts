@@ -43,6 +43,22 @@ function isServiceAccountEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/i.test(stripWrappingQuotes(value));
 }
 
+/** Extracts a PEM from a blob even when the surrounding JSON cannot be parsed (pretty-printed pastes put raw newlines inside the string). */
+function extractPrivateKeyFromBlob(value: string): string | undefined {
+  const match = value.match(/-----BEGIN PRIVATE KEY-----[\s\S]*?-----END PRIVATE KEY-----/);
+  return match ? normalizePrivateKey(match[0]) : undefined;
+}
+
+/** Extracts client_email from a blob even when the surrounding JSON cannot be parsed. */
+function extractClientEmailFromBlob(value: string): string | undefined {
+  const match = value.match(/"client_email"\s*:\s*"([^"]+)"/);
+  return match?.[1] ? stripWrappingQuotes(match[1]) : undefined;
+}
+
+function looksLikeServiceAccountBlob(value: string): boolean {
+  return value.includes("\"private_key\"") || value.includes("\"client_email\"") || value.trim().startsWith("{");
+}
+
 /** Recognises the common dashboard mistake of pasting the whole service-account JSON into FIREBASE_PRIVATE_KEY. */
 function parseServiceAccountJson(value: string): Record<string, unknown> | undefined {
   const text = stripWrappingQuotes(value);
@@ -80,14 +96,18 @@ export function resolveServiceAccountCredentials(): CredentialResolution {
   let unwrappedJson = false;
 
   const json = rawKey ? parseServiceAccountJson(rawKey) : undefined;
-  if (json) {
+  if (json || (rawKey && looksLikeServiceAccountBlob(rawKey))) {
     unwrappedJson = true;
-    if (typeof json.private_key === "string" && json.private_key.includes("-----BEGIN PRIVATE KEY-----")) {
-      privateKey = normalizePrivateKey(json.private_key);
-      serverLog("admin", "private-key-json-unwrapped", { reason: "FIREBASE_PRIVATE_KEY holds a service-account JSON object; extracted its private_key" });
+    const jsonKey = typeof json?.private_key === "string" ? json.private_key : undefined;
+    const extractedKey = (jsonKey && jsonKey.includes("-----BEGIN PRIVATE KEY-----") ? jsonKey : undefined) ?? (rawKey ? extractPrivateKeyFromBlob(rawKey) : undefined);
+    if (extractedKey) {
+      privateKey = normalizePrivateKey(extractedKey);
+      serverLog("admin", "private-key-json-unwrapped", { reason: "FIREBASE_PRIVATE_KEY holds a service-account JSON object; extracted its private_key", parsed: Boolean(json) });
     }
-    if (!isServiceAccountEmail(clientEmail) && typeof json.client_email === "string" && isServiceAccountEmail(json.client_email)) {
-      clientEmail = stripWrappingQuotes(json.client_email);
+    const jsonEmail = typeof json?.client_email === "string" ? json.client_email : undefined;
+    const extractedEmail = jsonEmail ?? (rawKey ? extractClientEmailFromBlob(rawKey) : undefined);
+    if (!isServiceAccountEmail(clientEmail) && extractedEmail && isServiceAccountEmail(extractedEmail)) {
+      clientEmail = stripWrappingQuotes(extractedEmail);
       serverLog("admin", "client-email-json-fallback", { reason: "FIREBASE_CLIENT_EMAIL is not a service-account address; using client_email from the service-account JSON" });
     }
   }

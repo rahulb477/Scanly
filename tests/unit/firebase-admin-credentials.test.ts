@@ -35,6 +35,19 @@ describe("Firebase Admin credential handling", () => {
     expect(resolveServiceAccountCredentials()).toMatchObject({ clientEmail: SERVICE_ACCOUNT, privateKey: PEM, source: "service-account-json", unwrappedJson: true });
   });
 
+  it("recovers the PEM and client_email from a pretty-printed JSON blob that cannot be parsed", () => {
+    process.env.FIREBASE_CLIENT_EMAIL = "owner@example.com";
+    // Raw newlines inside a JSON string make JSON.parse fail; the PEM is recovered by pattern.
+    process.env.FIREBASE_PRIVATE_KEY = [`{`, `  "type": "service_account",`, `  "project_id": "restaurant-flow-59183",`, `  "private_key": "${PEM}",`, `  "client_email": "${SERVICE_ACCOUNT}"`, `}`].join("\n");
+    expect(resolveServiceAccountCredentials()).toMatchObject({ clientEmail: SERVICE_ACCOUNT, privateKey: PEM, source: "service-account-json", unwrappedJson: true });
+  });
+
+  it("recovers the PEM from a JSON blob whose key uses escaped \\n sequences", () => {
+    process.env.FIREBASE_CLIENT_EMAIL = SERVICE_ACCOUNT;
+    process.env.FIREBASE_PRIVATE_KEY = `{"private_key": "${PEM.replace(/\n/g, "\\n")}"}`;
+    expect(resolveServiceAccountCredentials()).toMatchObject({ clientEmail: SERVICE_ACCOUNT, privateKey: PEM });
+  });
+
   it("reports exactly which credential is missing", () => {
     expect(resolveServiceAccountCredentials()).toEqual({ error: "missing" });
     process.env.FIREBASE_CLIENT_EMAIL = SERVICE_ACCOUNT;
