@@ -147,6 +147,17 @@ export async function GET() {
 
       const app = await step("admin:getFirebaseAdminApp", report, async () => admin.getFirebaseAdminApp());
       if (app) {
+        // Proves Google accepts the service-account key. This is the exact call
+        // that fails with `invalid_grant: Invalid JWT Signature` when the key in
+        // Vercel was revoked, deleted, or does not belong to FIREBASE_CLIENT_EMAIL.
+        // Only the outcome and the error code are reported — never the token.
+        await step("credentials:access-token", report, async () => {
+          const credential = (app.options as { credential?: { getAccessToken?: () => Promise<{ access_token?: string }> } }).credential;
+          if (!credential?.getAccessToken) throw new Error("no service-account credential configured");
+          const token = await withTimeout(credential.getAccessToken(), 8_000, "Google OAuth2 token exchange");
+          if (!token?.access_token) throw new Error("Google returned an empty access token");
+          return true;
+        });
         await step("admin:getAdminAuth", report, async () => admin.getAdminAuth());
         const db = await step("admin:getAdminDb", report, async () => admin.getAdminDb());
         if (db) {
@@ -160,6 +171,26 @@ export async function GET() {
   const failed = Object.entries(report).filter(([, value]) => typeof value === "object" && value !== null && (value as { status?: string }).status === "failed").map(([key]) => key);
   report.failingSteps = failed;
   report.ok = failed.length === 0;
+
+  // Plain-language verdict so the log reader does not have to interpret step
+  // names. `loginCanSucceed` is false whenever any step that the live login
+  // depends on failed.
+  const credentialRejected = failed.includes("credentials:access-token") || failed.includes("auth:listUsers") || failed.includes("firestore:read");
+  const configurationIncomplete = failed.includes("admin:getFirebaseAdminApp") || failed.includes("credentials:resolve") || failed.includes("credentials:parse-private-key");
+  report.verdict = {
+    loginCanSucceed: failed.length === 0,
+    configurationIncomplete,
+    credentialRejectedByGoogle: credentialRejected && !configurationIncomplete,
+    missingEnvironment: CHECKED_ENVIRONMENT_KEYS.filter((key) => !present(key) && key !== "FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS"),
+    projectMismatch: report.project && typeof report.project === "object" ? !(report.project as { match?: boolean }).match : null,
+    requiredAction: configurationIncomplete
+      ? "Fix the Firebase Admin environment variables in Vercel (Production) and redeploy."
+      : credentialRejected
+        ? "Generate a NEW service-account private key in Firebase Console > Project settings > Service accounts, set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in Vercel (Production), then redeploy."
+        : failed.length
+          ? "Inspect the failing steps above."
+          : "None. Firebase Admin is authenticated and login can complete.",
+  };
 
   return NextResponse.json(report, { status: 200, headers: { "Cache-Control": "no-store" } });
 }

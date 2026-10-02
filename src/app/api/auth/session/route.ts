@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, ApiError, assertSameOrigin } from "@/lib/api";
-import { verifyBearerToken, verifyFirebaseSession, SESSION_COOKIE, SESSION_DURATION_MS } from "@/lib/auth";
+import { describeAuthorization, isAdminCredentialError, verifyBearerToken, verifyFirebaseSession, SESSION_COOKIE, SESSION_DURATION_MS } from "@/lib/auth";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { logServerError, serverLog } from "@/lib/server-log";
 import { FieldValue } from "firebase-admin/firestore";
@@ -13,10 +13,25 @@ export const dynamic = "force-dynamic";
 // server log, never returned to the browser.
 const MESSAGE = {
   configuration: "Server authentication configuration is incomplete.",
+  credential: "Server Firebase credentials were rejected by Google. Regenerate the service-account key and redeploy.",
   token: "Authentication session could not be verified.",
   firestore: "Account setup could not be completed.",
   unexpected: "Unable to complete account setup.",
 } as const;
+
+/**
+ * Non-secret identifiers for the token-verification stage.
+ *
+ * Project ids are public configuration (they ship in the browser bundle), so
+ * comparing them in a log is safe and is the only way to prove a
+ * client-project / Admin-project mismatch from Vercel's log stream.
+ * The ID token, the private key, cookies and headers are never logged.
+ */
+function adminIdentity() {
+  const adminProject = process.env.FIREBASE_PROJECT_ID?.trim() || null;
+  const webProject = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() || null;
+  return { adminProjectId: adminProject, webProjectId: webProject, projectMatch: Boolean(adminProject) && adminProject === webProject };
+}
 
 /**
  * Creates or repairs `users/{uid}` with the Admin SDK.
@@ -76,7 +91,7 @@ export async function POST(request: NextRequest) {
       getAdminAuth();
       getAdminDb();
     } catch (error) {
-      logServerError("auth-session", "configuration", error);
+      logServerError("auth-session", "configuration", error, adminIdentity());
       throw new ApiError(503, "firebase/configuration-missing", MESSAGE.configuration);
     }
 
@@ -85,17 +100,32 @@ export async function POST(request: NextRequest) {
     try {
       decoded = await verifyBearerToken(request);
     } catch (error) {
-      const unavailable = error instanceof ApiError && error.status === 503;
-      logServerError("auth-session", "verify-id-token", error);
-      throw new ApiError(unavailable ? 503 : 401, unavailable ? "firebase/auth-unavailable" : "auth/user-token-expired", MESSAGE.token);
+      // Diagnostic logging wraps ONLY this verification step. The ID token, the
+      // Authorization header and the private key are never written to a log —
+      // only the header's shape, the project ids and the SDK error code/message.
+      const code = error instanceof ApiError ? error.code : "server/request-failed";
+      const status = error instanceof ApiError ? error.status : 500;
+      logServerError("auth-session", "verify-id-token", error, {
+        stage: "verifyIdToken",
+        httpStatus: status,
+        responseCode: code,
+        ...adminIdentity(),
+        authorization: describeAuthorization(request.headers.get("authorization")),
+        classification: isAdminCredentialError(error instanceof ApiError ? error.cause : error) ? "firebase-admin-credential-rejected" : error instanceof ApiError && error.status === 401 ? "id-token-rejected" : "auth-backend-unavailable",
+      });
+      if (code === "firebase/admin-credential-invalid") throw new ApiError(503, code, MESSAGE.credential, error);
+      throw new ApiError(status, error instanceof ApiError && error.status === 401 ? "auth/user-token-expired" : code, MESSAGE.token, error);
     }
 
     // Stage 3 — profile create/repair (Admin SDK bypasses client rules).
     try {
       await ensureUserProfile(decoded);
     } catch (error) {
-      logServerError("auth-session", "profile", error, { uid: decoded.uid });
-      throw new ApiError(503, "firestore/profile-failed", MESSAGE.firestore);
+      logServerError("auth-session", "profile", error, { uid: decoded.uid, ...adminIdentity() });
+      // A rejected service-account credential also surfaces here as gRPC 16
+      // UNAUTHENTICATED; it is not a Firestore rules problem.
+      if (isAdminCredentialError(error)) throw new ApiError(503, "firebase/admin-credential-invalid", MESSAGE.credential, error);
+      throw new ApiError(503, "firestore/profile-failed", MESSAGE.firestore, error);
     }
 
     // Stage 4 — exchange the verified token for an httpOnly session cookie.
@@ -105,8 +135,9 @@ export async function POST(request: NextRequest) {
     try {
       session = await getAdminAuth().createSessionCookie(authorization.slice(7), { expiresIn: SESSION_DURATION_MS });
     } catch (error) {
-      logServerError("auth-session", "create-session-cookie", error, { uid: decoded.uid });
-      throw new ApiError(401, "auth/user-token-expired", MESSAGE.token);
+      logServerError("auth-session", "create-session-cookie", error, { uid: decoded.uid, ...adminIdentity() });
+      if (isAdminCredentialError(error)) throw new ApiError(503, "firebase/admin-credential-invalid", MESSAGE.credential, error);
+      throw new ApiError(401, "auth/user-token-expired", MESSAGE.token, error);
     }
 
     const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });

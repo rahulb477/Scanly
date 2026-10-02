@@ -47,8 +47,8 @@ jobs:
               echo "status|content-type: $code"
               echo "--- headers (safe subset)"
               grep -iE '^(server|x-vercel|x-matched-path|location|cache-control|content-type|content-length|set-cookie)' /tmp/headers.txt | sed 's/\(set-cookie: [^=]*=\)[^;]*/\1<redacted>/I'
-              echo "--- body (first 1500 bytes)"
-              head -c 1500 /tmp/body.txt
+              echo "--- body (first 8000 bytes)"
+              head -c 8000 /tmp/body.txt
               echo
             } >> "$OUT"
           }
@@ -62,6 +62,10 @@ jobs:
             -H "Authorization: Bearer diagnostic.invalid.token" -H "Content-Length: 0"
           show "POST /api/auth/session (no origin header)" -X POST "$ORIGIN/api/auth/session" \
             -H "Authorization: Bearer diagnostic.invalid.token" -H "Content-Length: 0"
+          {
+            echo "==================== diagnostics verdict (jq, safe fields only)"
+            curl -sS -m 45 "$ORIGIN/api/diagnostics/firebase" | jq -r '{ok, failingSteps, verdict, project, privateKey: (.privateKey | {present, hasPemHeader, hasPemFooter, looksLikeJson}), credentials, "credentials:access-token", "auth:listUsers", "firestore:read"}'
+          } >> "$OUT"
           {
             echo "==================== build id from /login"
             curl -sS -m 45 "$ORIGIN/login" | grep -oE '/_next/static/[A-Za-z0-9_-]+/' | sort -u | head -3
