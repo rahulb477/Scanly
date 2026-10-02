@@ -22,6 +22,9 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
+      - name: Wait for the Vercel deployment to roll out
+        run: sleep 180
+
       - name: Probe production endpoints
         run: |
           set +e
@@ -49,6 +52,7 @@ jobs:
               echo
             } >> "$OUT"
           }
+          show "GET /api/diagnostics/firebase" -X GET "$ORIGIN/api/diagnostics/firebase"
           show "GET /api/health" -X GET "$ORIGIN/api/health"
           show "GET /api/public/probe/wifi" -X GET "$ORIGIN/api/public/probe/wifi"
           show "GET /api/menu/public?businessId=probe" -X GET "$ORIGIN/api/menu/public?businessId=probe"
