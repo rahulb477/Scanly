@@ -11,4 +11,3 @@ test("missing client/server configuration yields actionable errors, not HTML/Net
   expect(response.headers()["content-type"]).toContain("application/json");
   expect((await response.json()).error).toContain("Server Firebase configuration missing");
 });
-
