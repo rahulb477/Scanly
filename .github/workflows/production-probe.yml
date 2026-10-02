@@ -1,0 +1,36 @@
+name: Production probe
+
+# Diagnostic only: prints HTTP status, selected response headers and a truncated
+# response body for public production endpoints. No secrets are printed.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe production endpoints
+        run: |
+          set +e
+          ORIGIN="https://scanly-jade.vercel.app"
+          show() {
+            label="$1"; shift
+            echo "==================== $label"
+            code=$(curl -sS -m 45 -o /tmp/body.txt -D /tmp/headers.txt -w '%{http_code}|%{content_type}' "$@")
+            echo "status/content-type: $code"
+            echo "--- headers (safe subset)"
+            grep -iE '^(server|x-vercel|x-matched-path|location|cache-control|content-type|set-cookie)' /tmp/headers.txt | sed 's/\(set-cookie: [^=]*=\)[^;]*/\1<redacted>/I' || true
+            echo "--- body (first 1200 bytes)"
+            head -c 1200 /tmp/body.txt
+            echo
+          }
+          show "GET /api/health" -X GET "$ORIGIN/api/health"
+          show "GET /" -X GET "$ORIGIN/"
+          show "GET /api/public/probe/wifi" -X GET "$ORIGIN/api/public/probe/wifi"
+          show "POST /api/auth/session (invalid token, same-origin)" -X POST "$ORIGIN/api/auth/session" \
+            -H "Origin: $ORIGIN" -H "Sec-Fetch-Site: same-origin" \
+            -H "Authorization: Bearer diagnostic.invalid.token" -H "Content-Length: 0"
+          show "POST /api/auth/session (no origin header)" -X POST "$ORIGIN/api/auth/session" \
+            -H "Authorization: Bearer diagnostic.invalid.token" -H "Content-Length: 0"
+          echo "==================== build id from /login"
+          curl -sS -m 45 "$ORIGIN/login" | grep -oE '/_next/static/[A-Za-z0-9_-]+/' | sort -u | head -3
