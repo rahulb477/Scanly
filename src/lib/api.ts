@@ -4,7 +4,12 @@ import { z } from "zod";
 import { firebaseErrorCode } from "@/lib/firebase/errors";
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, public readonly code: string, message: string) { super(message); this.name = "ApiError"; }
+  /**
+   * `cause` carries the underlying SDK error for the server log only. It is
+   * never serialised into a response: `apiErrorResponse` reads the safe
+   * status/code/message triple and drops everything else.
+   */
+  constructor(public readonly status: number, public readonly code: string, message: string, public readonly cause?: unknown) { super(message); this.name = "ApiError"; }
 }
 export const identifier = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/, "Invalid identifier.");
 

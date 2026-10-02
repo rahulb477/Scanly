@@ -5,6 +5,7 @@ import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged,
 import { getFirebaseClient } from "@/lib/firebase/client";
 import { authErrorMessage, ClientError } from "@/lib/firebase/errors";
 import { ensureUserProfile } from "@/lib/firebase/profile";
+import { createServerSession } from "@/lib/firebase/session";
 import { signupSchema, validatedEmail } from "@/lib/firebase/validation";
 import { requestJson } from "@/lib/http-client";
 
@@ -38,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // users/{uid} with the Admin SDK and issues the httpOnly SSR cookie. The
     // direct Firestore sync afterwards only refreshes the client-owned fields and
     // is tolerated to fail when the deployed rules are stale.
-    await requestJson("/api/auth/session", { method: "POST", headers: { Authorization: `Bearer ${await current.getIdToken()}` } });
+    await createServerSession();
     await ensureUserProfile(current);
   }, []);
 
